@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Element Vault</title>
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Element Vault</p>
+          <h1>DOM stash</h1>
+          <p class="subtle">Pick an element in the page, remove it, then inspect its attributes and CSS here.</p>
+        </div>
+      </header>
+
+      <section class="toolbar card">
+        <button id="pickButton" class="primary">Pick and remove</button>
+        <button id="stopButton">Cancel pick mode</button>
+        <button id="restoreAllButton">Restore all</button>
+        <button id="clearAllButton" class="danger">Forget records</button>
+      </section>
+
+      <section class="status-row card">
+        <div>
+          <div class="label">Current tab</div>
+          <div id="tabMeta" class="tab-meta">Loading…</div>
+        </div>
+        <div>
+          <div class="label">Items</div>
+          <div id="itemCount" class="count-pill">0</div>
+        </div>
+      </section>
+
+      <section class="adblock-row card">
+        <div>
+          <div class="section-title">Simple ad blocker</div>
+          <div class="subtle compact">Blocks requests to doubleclick.net, googlesyndication.com, and googleadservices.com.</div>
+        </div>
+        <label class="switch" for="adBlockToggle">
+          <input id="adBlockToggle" type="checkbox" />
+          <span class="switch-track" aria-hidden="true"></span>
+          <span id="adBlockLabel" class="switch-label">Loading…</span>
+        </label>
+      </section>
+
+      <main class="main-grid">
+        <section class="list card">
+          <div class="section-title">Removed elements</div>
+          <div id="emptyState" class="empty-state">
+            Nothing stashed yet. Click <strong>Pick and remove</strong>, then click an element in the page.
+          </div>
+          <div id="listContainer" class="list-container"></div>
+        </section>
+
+        <section class="detail card">
+          <div class="section-title">Inspector</div>
+          <div id="detailPanel" class="detail-panel empty-detail">
+            Select a removed element to inspect its DOM path, attributes, and computed style snapshot.
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="sidepanel.js"></script>
+  </body>
+</html>
