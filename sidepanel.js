@@ -310,11 +310,8 @@ adBlockToggle.addEventListener('change', async () => {
   }
 });
 
-chrome.storage.sync.get({ activeHighlightStyle: 'rainbow' }, (data) => {
-  if (highlightStyleSelect) {
-    highlightStyleSelect.value = data.activeHighlightStyle;
-  }
-});
+// Initial fetch will be done after UI elements are defined
+
 
 highlightStyleSelect.addEventListener('change', async () => {
   try {
@@ -421,4 +418,55 @@ function updateCustomPreview() {
   }
 });
 
-updateCustomPreview();
+const saveCustomStyleButton = document.getElementById('saveCustomStyleButton');
+
+if (saveCustomStyleButton) {
+  saveCustomStyleButton.addEventListener('click', async () => {
+    const customStyleConfig = {
+      thickness: customThickness.value,
+      color1: customColor1.value,
+      opacity1: customOpacity1.value,
+      color2: customColor2.value,
+      opacity2: customOpacity2.value,
+      animation: customAnimation.value,
+      speed: customSpeed.value
+    };
+    try {
+      await chrome.storage.sync.set({
+        customStyleConfig,
+        activeHighlightStyle: 'custom'
+      });
+      if (highlightStyleSelect) {
+        highlightStyleSelect.value = 'custom';
+      }
+      
+      const originalText = saveCustomStyleButton.textContent;
+      saveCustomStyleButton.textContent = 'Saved!';
+      setTimeout(() => {
+        saveCustomStyleButton.textContent = originalText;
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to save custom style:', error);
+      alert('Failed to save custom style.');
+    }
+  });
+}
+
+chrome.storage.sync.get({
+  activeHighlightStyle: 'rainbow',
+  customStyleConfig: null
+}, (data) => {
+  if (highlightStyleSelect) {
+    highlightStyleSelect.value = data.activeHighlightStyle;
+  }
+  if (data.customStyleConfig) {
+    if (customThickness) customThickness.value = data.customStyleConfig.thickness;
+    if (customColor1) customColor1.value = data.customStyleConfig.color1;
+    if (customOpacity1) customOpacity1.value = data.customStyleConfig.opacity1;
+    if (customColor2) customColor2.value = data.customStyleConfig.color2;
+    if (customOpacity2) customOpacity2.value = data.customStyleConfig.opacity2;
+    if (customAnimation) customAnimation.value = data.customStyleConfig.animation;
+    if (customSpeed) customSpeed.value = data.customStyleConfig.speed;
+  }
+  updateCustomPreview();
+});
