@@ -3,10 +3,14 @@ const PLACEHOLDER_MAP = new Map();
 const OVERLAY_ID = '__element_vault_overlay__';
 const SHIELD_ID = '__element_vault_capture_shield__';
 const STYLE_ID = '__element_vault_style__';
+const PICK_MODE_CLASS = '__element-vault-pick-mode__';
 
 let pickMode = false;
 let currentHover = null;
 let removeCounter = 0;
+let viewportRafPending = false;
+
+let activeHighlightStyle = 'rainbow';
 
 function injectStyles() {
   if (document.getElementById(STYLE_ID)) return;
@@ -38,16 +42,22 @@ function injectStyles() {
     }
 
     #${OVERLAY_ID} {
-      --element-vault-angle: 0deg;
       position: fixed;
       top: 0;
       left: 0;
       width: 0;
       height: 0;
-      padding: 3px;
       pointer-events: none;
       z-index: 2147483647;
       border-radius: 12px;
+      display: none;
+      box-sizing: border-box;
+      will-change: background;
+    }
+
+    #${OVERLAY_ID}[data-style="rainbow"] {
+      --element-vault-angle: 0deg;
+      padding: 3px;
       background: conic-gradient(
         from var(--element-vault-angle),
         #ff3b30 0deg,
@@ -64,14 +74,29 @@ function injectStyles() {
         0 0 24px rgba(10,132,255,0.28),
         0 0 38px rgba(191,90,242,0.22);
       animation: element-vault-spin 1.4s linear infinite;
-      display: none;
-      box-sizing: border-box;
-      will-change: background;
       -webkit-mask:
         linear-gradient(#000 0 0) content-box,
         linear-gradient(#000 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
+    }
+
+    #${OVERLAY_ID}[data-style="solid-blue"] {
+      border: 3px solid #0a84ff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 12px rgba(10,132,255,0.5);
+      background: transparent;
+    }
+
+    #${OVERLAY_ID}[data-style="dashed-red"] {
+      border: 3px dashed #ff3b30;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 12px rgba(255,59,48,0.3);
+      background: transparent;
+    }
+
+    #${OVERLAY_ID}[data-style="glowing-green"] {
+      border: 3px solid #32d74b;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 24px #32d74b, inset 0 0 12px rgba(50,215,75,0.2);
+      background: rgba(50, 215, 75, 0.1);
     }
 
     html.__element-vault-pick-mode__,
@@ -83,6 +108,26 @@ function injectStyles() {
   document.documentElement.appendChild(style);
 }
 
+// Read initial style
+chrome.storage.sync.get({ activeHighlightStyle: 'rainbow' }, (data) => {
+  activeHighlightStyle = data.activeHighlightStyle;
+  const overlay = document.getElementById(OVERLAY_ID);
+  if (overlay) {
+    overlay.setAttribute('data-style', activeHighlightStyle);
+  }
+});
+
+// Listen for style changes
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'sync' && changes.activeHighlightStyle) {
+    activeHighlightStyle = changes.activeHighlightStyle.newValue;
+    const overlay = document.getElementById(OVERLAY_ID);
+    if (overlay) {
+      overlay.setAttribute('data-style', activeHighlightStyle);
+    }
+  }
+});
+
 function ensureOverlay() {
   injectStyles();
 
@@ -90,6 +135,7 @@ function ensureOverlay() {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = OVERLAY_ID;
+    overlay.setAttribute('data-style', activeHighlightStyle);
     document.documentElement.appendChild(overlay);
   }
   return overlay;
@@ -274,6 +320,8 @@ function removeElement(element) {
   chrome.runtime.sendMessage({
     type: 'STORE_REMOVED_ELEMENT',
     payload
+  }).catch((error) => {
+    console.error('Failed to store removed element record:', error);
   });
 
   currentHover = null;
@@ -353,14 +401,14 @@ function getTargetFromPoint(clientX, clientY) {
 
 function startPickMode() {
   pickMode = true;
-  document.documentElement.classList.add('__element-vault-pick-mode__');
+  document.documentElement.classList.add(PICK_MODE_CLASS);
   ensureCaptureShield().style.display = 'block';
 }
 
 function stopPickMode() {
   pickMode = false;
   currentHover = null;
-  document.documentElement.classList.remove('__element-vault-pick-mode__');
+  document.documentElement.classList.remove(PICK_MODE_CLASS);
   hideOverlay();
 
   const shield = document.getElementById(SHIELD_ID);
@@ -415,13 +463,18 @@ function onKeyDown(event) {
 }
 
 function onViewportChange() {
-  if (!pickMode) return;
-  if (!currentHover || !currentHover.isConnected) {
-    currentHover = null;
-    hideOverlay();
-    return;
-  }
-  showOverlayForElement(currentHover);
+  if (!pickMode || viewportRafPending) return;
+  viewportRafPending = true;
+  requestAnimationFrame(() => {
+    viewportRafPending = false;
+    if (!pickMode) return;
+    if (!currentHover || !currentHover.isConnected) {
+      currentHover = null;
+      hideOverlay();
+      return;
+    }
+    showOverlayForElement(currentHover);
+  });
 }
 
 function clearTransientState() {

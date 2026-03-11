@@ -107,13 +107,29 @@ h1 {
   margin-bottom: 12px;
 }
 
-.status-row {
+.status-row,
+.adblock-row,
+.highlight-style-row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 14px;
   padding: 14px;
   margin-bottom: 12px;
   align-items: center;
+}
+
+.style-select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.style-select:focus {
+  border-color: var(--accent);
 }
 
 .label,
@@ -264,15 +280,6 @@ h1 {
   color: #ffd39b;
 }
 
-
-.adblock-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 14px;
-  padding: 14px;
-  margin-bottom: 12px;
-  align-items: center;
-}
 
 .compact {
   margin-top: 6px;

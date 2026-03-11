@@ -11,12 +11,14 @@ const itemCount = document.getElementById('itemCount');
 const tabMeta = document.getElementById('tabMeta');
 const adBlockToggle = document.getElementById('adBlockToggle');
 const adBlockLabel = document.getElementById('adBlockLabel');
+const highlightStyleSelect = document.getElementById('highlightStyleSelect');
 
 let activeTabId = null;
 let activeTabUrl = '';
 let selectedRecordId = null;
 let records = [];
 let adBlockEnabled = false;
+let refreshInFlight = false;
 
 async function getActiveTab() {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -38,6 +40,14 @@ function truncate(text, max = 90) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+async function deleteRecord(recordId) {
+  await chrome.runtime.sendMessage({
+    type: 'DELETE_REMOVED_ELEMENT_RECORD',
+    tabId: activeTabId,
+    removeId: recordId
+  });
+}
+
 function renderAdBlockToggle() {
   adBlockToggle.checked = adBlockEnabled;
   adBlockLabel.textContent = adBlockEnabled ? 'On' : 'Off';
@@ -52,6 +62,12 @@ async function refreshAdBlockState() {
 }
 
 async function refresh() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+  try { return await refreshInner(); } finally { refreshInFlight = false; }
+}
+
+async function refreshInner() {
   const tab = await getActiveTab();
   if (!tab?.id) {
     activeTabId = null;
@@ -86,7 +102,7 @@ async function refresh() {
 function render() {
   itemCount.textContent = String(records.length);
   emptyState.style.display = records.length ? 'none' : 'block';
-  listContainer.innerHTML = '';
+  listContainer.replaceChildren();
 
   for (const record of records) {
     const card = document.createElement('div');
@@ -127,20 +143,12 @@ function render() {
         alert(result?.error || 'Could not restore that element on this page state.');
         return;
       }
-      await chrome.runtime.sendMessage({
-        type: 'DELETE_REMOVED_ELEMENT_RECORD',
-        tabId: activeTabId,
-        removeId: record.id
-      });
+      await deleteRecord(record.id);
       await refresh();
     });
 
     const deleteButton = makeButton('Forget', async () => {
-      await chrome.runtime.sendMessage({
-        type: 'DELETE_REMOVED_ELEMENT_RECORD',
-        tabId: activeTabId,
-        removeId: record.id
-      });
+      await deleteRecord(record.id);
       await refresh();
     });
 
@@ -161,7 +169,7 @@ function renderDetail() {
   }
 
   detailPanel.className = 'detail-panel';
-  detailPanel.innerHTML = '';
+  detailPanel.replaceChildren();
 
   detailPanel.append(
     makeDetailSection('Summary', {
@@ -265,11 +273,7 @@ restoreAllButton.addEventListener('click', async () => {
   for (const record of [...records]) {
     const result = await sendToActiveTab({ type: 'RESTORE_REMOVED_ELEMENT', record });
     if (result?.ok) {
-      await chrome.runtime.sendMessage({
-        type: 'DELETE_REMOVED_ELEMENT_RECORD',
-        tabId: activeTabId,
-        removeId: record.id
-      });
+      await deleteRecord(record.id);
     }
   }
   await refresh();
@@ -303,6 +307,20 @@ adBlockToggle.addEventListener('change', async () => {
     alert(error?.message || 'Could not update ad blocker state.');
   } finally {
     adBlockToggle.disabled = false;
+  }
+});
+
+chrome.storage.sync.get({ activeHighlightStyle: 'rainbow' }, (data) => {
+  if (highlightStyleSelect) {
+    highlightStyleSelect.value = data.activeHighlightStyle;
+  }
+});
+
+highlightStyleSelect.addEventListener('change', async () => {
+  try {
+    await chrome.storage.sync.set({ activeHighlightStyle: highlightStyleSelect.value });
+  } catch (error) {
+    console.error('Failed to save highlight style:', error);
   }
 });
 
