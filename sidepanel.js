@@ -341,3 +341,84 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 });
 
 refresh().catch(console.error);
+
+const customThickness = document.getElementById('customThickness');
+const customColor1 = document.getElementById('customColor1');
+const customOpacity1 = document.getElementById('customOpacity1');
+const customColor2 = document.getElementById('customColor2');
+const customOpacity2 = document.getElementById('customOpacity2');
+const customAnimation = document.getElementById('customAnimation');
+const customSpeed = document.getElementById('customSpeed');
+const customPreview = document.getElementById('customPreview');
+const thicknessValue = document.getElementById('thicknessValue');
+const speedValue = document.getElementById('speedValue');
+
+function hexToRgba(hex, opacity) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+function updateCustomPreview() {
+  if (!customPreview) return;
+
+  const thickness = customThickness.value;
+  const color1 = hexToRgba(customColor1.value, customOpacity1.value);
+  const color2 = hexToRgba(customColor2.value, customOpacity2.value);
+  const animation = customAnimation.value;
+  const speed = customSpeed.value;
+
+  thicknessValue.textContent = thickness;
+  speedValue.textContent = speed;
+
+  // Reset all inline styles
+  customPreview.style.border = 'none';
+  customPreview.style.boxShadow = 'none';
+  customPreview.style.background = 'transparent';
+  customPreview.style.backgroundImage = 'none';
+  customPreview.style.animation = 'none';
+  customPreview.style.padding = '0';
+  customPreview.style.webkitMask = 'none';
+  customPreview.style.mask = 'none';
+  customPreview.style.opacity = '1';
+
+  if (animation === 'gradient') {
+    customPreview.style.padding = `${thickness}px`;
+    customPreview.style.background = `conic-gradient(from var(--preview-angle), ${color1} 0deg, ${color2} 180deg, ${color1} 360deg)`;
+    customPreview.style.animation = `preview-spin ${speed}s linear infinite`;
+    customPreview.style.webkitMask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
+    customPreview.style.webkitMaskComposite = 'xor';
+    customPreview.style.maskComposite = 'exclude';
+  } else if (animation === 'marching-ants') {
+    customPreview.style.background = 'transparent';
+    const c1 = customColor1.value;
+    customPreview.style.backgroundImage = `
+      linear-gradient(90deg, ${c1} 50%, transparent 50%),
+      linear-gradient(90deg, ${c1} 50%, transparent 50%),
+      linear-gradient(0deg, ${c1} 50%, transparent 50%),
+      linear-gradient(0deg, ${c1} 50%, transparent 50%)
+    `;
+    customPreview.style.backgroundRepeat = 'repeat-x, repeat-x, repeat-y, repeat-y';
+    customPreview.style.backgroundSize = `20px ${thickness}px, 20px ${thickness}px, ${thickness}px 20px, ${thickness}px 20px`;
+    customPreview.style.backgroundPosition = `0 0, 0 100%, 0 0, 100% 0`;
+    customPreview.style.animation = `preview-marching ${speed}s linear infinite`;
+    customPreview.style.opacity = customOpacity1.value;
+  } else if (animation === 'pulsing') {
+    customPreview.style.border = `${thickness}px solid ${color1}`;
+    customPreview.style.setProperty('--pulse-color', color2);
+    customPreview.style.animation = `preview-pulse ${speed}s ease-out infinite`;
+  }
+}
+
+[
+  customThickness, customColor1, customOpacity1, 
+  customColor2, customOpacity2, customAnimation, customSpeed
+].forEach(el => {
+  if (el) {
+    el.addEventListener('input', updateCustomPreview);
+    el.addEventListener('change', updateCustomPreview);
+  }
+});
+
+updateCustomPreview();

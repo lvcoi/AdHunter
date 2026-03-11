@@ -336,3 +336,111 @@ h1 {
   color: #dbe6ff;
   font-weight: 700;
 }
+
+.custom-builder-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.builder-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-group label {
+  color: #c9d4f3;
+  font-size: 12px;
+}
+
+.control-group input[type="range"] {
+  width: 100%;
+}
+
+.colors-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-item input[type="color"] {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.color-item input[type="range"] {
+  flex: 1;
+}
+
+.preview-container {
+  margin-top: 10px;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--bg-elev-2);
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+}
+
+.preview-box {
+  position: relative;
+  width: 120px;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--bg-elev);
+  color: var(--text);
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+#customPreview {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+@property --preview-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes preview-spin {
+  to { --preview-angle: 360deg; }
+}
+
+@keyframes preview-marching {
+  to { background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px; }
+}
+
+@keyframes preview-pulse {
+  0% { box-shadow: 0 0 0 0 var(--pulse-color); }
+  70% { box-shadow: 0 0 0 10px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+

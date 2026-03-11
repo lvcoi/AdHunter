@@ -59,6 +59,54 @@
         </select>
       </section>
 
+      <section class="custom-builder-row card">
+        <div>
+          <div class="section-title">Custom Border Builder</div>
+          <div class="subtle compact">Create your own highlight style.</div>
+        </div>
+        <div class="builder-controls">
+          <div class="control-group">
+            <label for="customThickness">Thickness (<span id="thicknessValue">3</span>px)</label>
+            <input type="range" id="customThickness" min="1" max="20" value="3" />
+          </div>
+          
+          <div class="control-group">
+            <label>Colors & Opacity</label>
+            <div class="colors-row">
+              <div class="color-item">
+                <input type="color" id="customColor1" value="#ff3b30" />
+                <input type="range" id="customOpacity1" min="0" max="1" step="0.05" value="1" title="Opacity 1" />
+              </div>
+              <div class="color-item">
+                <input type="color" id="customColor2" value="#0a84ff" />
+                <input type="range" id="customOpacity2" min="0" max="1" step="0.05" value="1" title="Opacity 2" />
+              </div>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label for="customAnimation">Animation</label>
+            <select id="customAnimation" class="style-select">
+              <option value="gradient">Gradient</option>
+              <option value="marching-ants">Marching Ants</option>
+              <option value="pulsing">Pulsing/Glowing</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="customSpeed">Speed (<span id="speedValue">1.4</span>s)</label>
+            <input type="range" id="customSpeed" min="0.1" max="5" step="0.1" value="1.4" />
+          </div>
+
+          <div class="preview-container">
+            <div class="preview-box">
+              <div id="customPreview"></div>
+              <span>Preview</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <main class="main-grid">
         <section class="list card">
           <div class="section-title">Removed elements</div>
