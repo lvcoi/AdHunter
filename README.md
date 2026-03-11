@@ -1,4 +1,4 @@
-# Element Vault WIP
+# Element Vault [WIP]
 
 A Chrome Manifest V3 extension that:
 
