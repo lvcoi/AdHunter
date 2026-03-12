@@ -11,6 +11,81 @@ let removeCounter = 0;
 let viewportRafPending = false;
 
 let activeHighlightStyle = 'rainbow';
+let customStyleConfig = null;
+
+function hexToRgba(hex, opacity) {
+  if (!hex) return 'transparent';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+function applyCustomStyle(overlay) {
+  if (!overlay) return;
+
+  if (activeHighlightStyle !== 'custom' || !customStyleConfig) {
+    overlay.style.border = '';
+    overlay.style.boxShadow = '';
+    overlay.style.background = '';
+    overlay.style.backgroundImage = '';
+    overlay.style.animation = '';
+    overlay.style.padding = '';
+    overlay.style.webkitMask = '';
+    overlay.style.webkitMaskComposite = '';
+    overlay.style.maskComposite = '';
+    overlay.style.opacity = '';
+    overlay.style.backgroundRepeat = '';
+    overlay.style.backgroundSize = '';
+    overlay.style.backgroundPosition = '';
+    overlay.style.removeProperty('--element-vault-pulse-color');
+    return;
+  }
+
+  const { thickness = 3, color1 = '#ffffff', opacity1 = 1, color2 = '#000000', opacity2 = 1, animation = 'gradient', speed = 2 } = customStyleConfig;
+  const rgba1 = hexToRgba(color1, opacity1);
+  const rgba2 = hexToRgba(color2, opacity2);
+
+  overlay.style.border = 'none';
+  overlay.style.boxShadow = 'none';
+  overlay.style.background = 'transparent';
+  overlay.style.backgroundImage = 'none';
+  overlay.style.animation = 'none';
+  overlay.style.padding = '0';
+  overlay.style.webkitMask = 'none';
+  overlay.style.webkitMaskComposite = 'source-over';
+  overlay.style.maskComposite = 'add';
+  overlay.style.opacity = '1';
+  overlay.style.backgroundRepeat = 'no-repeat';
+  overlay.style.backgroundSize = 'auto';
+  overlay.style.backgroundPosition = '0 0';
+
+  if (animation === 'gradient') {
+    overlay.style.padding = `${thickness}px`;
+    overlay.style.background = `conic-gradient(from var(--element-vault-angle), ${rgba1} 0deg, ${rgba2} 180deg, ${rgba1} 360deg)`;
+    overlay.style.animation = `element-vault-spin ${speed}s linear infinite`;
+    overlay.style.webkitMask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
+    overlay.style.webkitMaskComposite = 'xor';
+    overlay.style.maskComposite = 'exclude';
+  } else if (animation === 'marching-ants') {
+    overlay.style.background = 'transparent';
+    overlay.style.backgroundImage = `
+      linear-gradient(90deg, ${color1} 50%, transparent 50%),
+      linear-gradient(90deg, ${color1} 50%, transparent 50%),
+      linear-gradient(0deg, ${color1} 50%, transparent 50%),
+      linear-gradient(0deg, ${color1} 50%, transparent 50%)
+    `;
+    overlay.style.backgroundRepeat = 'repeat-x, repeat-x, repeat-y, repeat-y';
+    overlay.style.backgroundSize = `20px ${thickness}px, 20px ${thickness}px, ${thickness}px 20px, ${thickness}px 20px`;
+    overlay.style.backgroundPosition = `0 0, 0 100%, 0 0, 100% 0`;
+    overlay.style.animation = `element-vault-marching ${speed}s linear infinite`;
+    overlay.style.opacity = opacity1;
+  } else if (animation === 'pulsing') {
+    overlay.style.border = `${thickness}px solid ${rgba1}`;
+    overlay.style.setProperty('--element-vault-pulse-color', rgba2);
+    overlay.style.animation = `element-vault-pulse ${speed}s ease-out infinite`;
+  }
+}
 
 function injectStyles() {
   if (document.getElementById(STYLE_ID)) return;
@@ -26,6 +101,16 @@ function injectStyles() {
 
     @keyframes element-vault-spin {
       to { --element-vault-angle: 360deg; }
+    }
+
+    @keyframes element-vault-marching {
+      to { background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px; }
+    }
+
+    @keyframes element-vault-pulse {
+      0% { box-shadow: 0 0 0 0 var(--element-vault-pulse-color); }
+      70% { box-shadow: 0 0 0 10px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
     }
 
     #${SHIELD_ID} {
@@ -109,21 +194,29 @@ function injectStyles() {
 }
 
 // Read initial style
-chrome.storage.sync.get({ activeHighlightStyle: 'rainbow' }, (data) => {
+chrome.storage.sync.get({ activeHighlightStyle: 'rainbow', customStyleConfig: null }, (data) => {
   activeHighlightStyle = data.activeHighlightStyle;
+  customStyleConfig = data.customStyleConfig;
   const overlay = document.getElementById(OVERLAY_ID);
   if (overlay) {
     overlay.setAttribute('data-style', activeHighlightStyle);
+    applyCustomStyle(overlay);
   }
 });
 
 // Listen for style changes
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'sync' && changes.activeHighlightStyle) {
-    activeHighlightStyle = changes.activeHighlightStyle.newValue;
+  if (areaName === 'sync') {
+    if (changes.activeHighlightStyle) {
+      activeHighlightStyle = changes.activeHighlightStyle.newValue;
+    }
+    if (changes.customStyleConfig) {
+      customStyleConfig = changes.customStyleConfig.newValue;
+    }
     const overlay = document.getElementById(OVERLAY_ID);
     if (overlay) {
       overlay.setAttribute('data-style', activeHighlightStyle);
+      applyCustomStyle(overlay);
     }
   }
 });
@@ -136,6 +229,7 @@ function ensureOverlay() {
     overlay = document.createElement('div');
     overlay.id = OVERLAY_ID;
     overlay.setAttribute('data-style', activeHighlightStyle);
+    applyCustomStyle(overlay);
     document.documentElement.appendChild(overlay);
   }
   return overlay;
