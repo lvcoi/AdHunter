@@ -9,6 +9,15 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 });
 
+async function getByTab() {
+  const current = await chrome.storage.local.get(STORAGE_KEY);
+  return current[STORAGE_KEY] || {};
+}
+
+async function saveByTab(byTab) {
+  await chrome.storage.local.set({ [STORAGE_KEY]: byTab });
+}
+
 async function getAdBlockerEnabled() {
   const enabledRulesets = await chrome.declarativeNetRequest.getEnabledRulesets();
   return enabledRulesets.includes(AD_RULESET_ID);
@@ -20,7 +29,7 @@ async function setAdBlockerEnabled(enabled) {
     : { disableRulesetIds: [AD_RULESET_ID] };
 
   await chrome.declarativeNetRequest.updateEnabledRulesets(options);
-  return getAdBlockerEnabled();
+  return enabled;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -33,46 +42,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
-        const payload = {
-          ...message.payload,
-          tabId
-        };
-
-        const current = await chrome.storage.local.get(STORAGE_KEY);
-        const byTab = current[STORAGE_KEY] || {};
+        const payload = { ...message.payload, tabId };
+        const byTab = await getByTab();
         const records = Array.isArray(byTab[tabId]) ? byTab[tabId] : [];
         records.unshift(payload);
         byTab[tabId] = records;
-        await chrome.storage.local.set({ [STORAGE_KEY]: byTab });
+        await saveByTab(byTab);
         sendResponse({ ok: true, tabId, count: records.length });
         return;
       }
 
       case 'GET_REMOVED_ELEMENTS': {
-        const tabId = message.tabId;
-        const current = await chrome.storage.local.get(STORAGE_KEY);
-        const byTab = current[STORAGE_KEY] || {};
-        sendResponse({ ok: true, records: byTab[tabId] || [] });
+        const byTab = await getByTab();
+        sendResponse({ ok: true, records: byTab[message.tabId] || [] });
         return;
       }
 
       case 'DELETE_REMOVED_ELEMENT_RECORD': {
         const { tabId, removeId } = message;
-        const current = await chrome.storage.local.get(STORAGE_KEY);
-        const byTab = current[STORAGE_KEY] || {};
+        const byTab = await getByTab();
         const records = Array.isArray(byTab[tabId]) ? byTab[tabId] : [];
         byTab[tabId] = records.filter((item) => item.id !== removeId);
-        await chrome.storage.local.set({ [STORAGE_KEY]: byTab });
+        await saveByTab(byTab);
         sendResponse({ ok: true, records: byTab[tabId] });
         return;
       }
 
       case 'CLEAR_TAB_RECORDS': {
-        const { tabId } = message;
-        const current = await chrome.storage.local.get(STORAGE_KEY);
-        const byTab = current[STORAGE_KEY] || {};
-        delete byTab[tabId];
-        await chrome.storage.local.set({ [STORAGE_KEY]: byTab });
+        const byTab = await getByTab();
+        delete byTab[message.tabId];
+        await saveByTab(byTab);
         sendResponse({ ok: true });
         return;
       }
@@ -97,4 +96,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   });
 
   return true;
+});
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  try {
+    const byTab = await getByTab();
+    if (byTab[tabId]) {
+      delete byTab[tabId];
+      await saveByTab(byTab);
+    }
+  } catch (error) {
+    console.error('Failed to clean up tab storage:', error);
+  }
 });
