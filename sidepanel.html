@@ -72,15 +72,52 @@
           </div>
           
           <div class="control-group">
-            <label>Colors & Opacity</label>
+            <label>Colors</label>
             <div class="colors-row">
               <div class="color-item">
-                <input type="color" id="customColor1" value="#ff3b30" />
-                <input type="range" id="customOpacity1" min="0" max="1" step="0.05" value="1" title="Opacity 1" />
+                <button type="button" class="color-swatch" id="colorSwatch1" style="background-color: rgba(255, 59, 48, 1)"></button>
+                <span>Color 1</span>
+                <input type="hidden" id="customColor1" value="#ff3b30" />
+                <input type="hidden" id="customOpacity1" value="1" />
               </div>
               <div class="color-item">
-                <input type="color" id="customColor2" value="#0a84ff" />
-                <input type="range" id="customOpacity2" min="0" max="1" step="0.05" value="1" title="Opacity 2" />
+                <button type="button" class="color-swatch" id="colorSwatch2" style="background-color: rgba(10, 132, 255, 1)"></button>
+                <span>Color 2</span>
+                <input type="hidden" id="customColor2" value="#0a84ff" />
+                <input type="hidden" id="customOpacity2" value="1" />
+              </div>
+            </div>
+          </div>
+
+          <div id="advancedColorPicker" class="color-picker-panel" style="display: none;">
+            <div class="cp-header">
+              <span id="cpTitle">Advanced Color Palette</span>
+              <button type="button" id="cpClose" class="icon-button">&times;</button>
+            </div>
+            <div class="cp-preview-area">
+              <div id="cpCurrentColor" class="cp-current-color"></div>
+              <input type="text" id="cpHexInput" class="cp-hex-input" />
+            </div>
+            <div class="cp-sliders">
+              <div class="cp-slider-group">
+                <label>R</label>
+                <input type="range" id="cpR" min="0" max="255" value="255" />
+                <input type="number" id="cpRNum" min="0" max="255" value="255" />
+              </div>
+              <div class="cp-slider-group">
+                <label>G</label>
+                <input type="range" id="cpG" min="0" max="255" value="0" />
+                <input type="number" id="cpGNum" min="0" max="255" value="0" />
+              </div>
+              <div class="cp-slider-group">
+                <label>B</label>
+                <input type="range" id="cpB" min="0" max="255" value="0" />
+                <input type="number" id="cpBNum" min="0" max="255" value="0" />
+              </div>
+              <div class="cp-slider-group">
+                <label>A</label>
+                <input type="range" id="cpA" min="0" max="1" step="0.01" value="1" />
+                <input type="number" id="cpANum" min="0" max="1" step="0.01" value="1" />
               </div>
             </div>
           </div>

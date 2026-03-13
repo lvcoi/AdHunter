@@ -469,4 +469,128 @@ chrome.storage.sync.get({
     if (customSpeed) customSpeed.value = data.customStyleConfig.speed;
   }
   updateCustomPreview();
+  updateSwatches();
 });
+
+// Advanced Color Palette Logic
+const advancedColorPicker = document.getElementById('advancedColorPicker');
+const cpClose = document.getElementById('cpClose');
+const cpCurrentColor = document.getElementById('cpCurrentColor');
+const cpHexInput = document.getElementById('cpHexInput');
+const cpR = document.getElementById('cpR');
+const cpRNum = document.getElementById('cpRNum');
+const cpG = document.getElementById('cpG');
+const cpGNum = document.getElementById('cpGNum');
+const cpB = document.getElementById('cpB');
+const cpBNum = document.getElementById('cpBNum');
+const cpA = document.getElementById('cpA');
+const cpANum = document.getElementById('cpANum');
+
+const colorSwatch1 = document.getElementById('colorSwatch1');
+const colorSwatch2 = document.getElementById('colorSwatch2');
+
+let activeSwatchIndex = 1;
+
+function hexToRgbVals(hex) {
+  if (!hex) return { r: 0, g: 0, b: 0 };
+  if (hex.length === 4) {
+    hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+  }
+  const r = parseInt(hex.slice(1, 3), 16) || 0;
+  const g = parseInt(hex.slice(3, 5), 16) || 0;
+  const b = parseInt(hex.slice(5, 7), 16) || 0;
+  return { r, g, b };
+}
+
+function rgbToHexStr(r, g, b) {
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+function updateSwatches() {
+  if (colorSwatch1 && customColor1 && customOpacity1) {
+    const {r, g, b} = hexToRgbVals(customColor1.value);
+    colorSwatch1.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${customOpacity1.value})`;
+  }
+  if (colorSwatch2 && customColor2 && customOpacity2) {
+    const {r, g, b} = hexToRgbVals(customColor2.value);
+    colorSwatch2.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${customOpacity2.value})`;
+  }
+}
+
+function openColorPicker(index) {
+  activeSwatchIndex = index;
+  const hexInput = index === 1 ? customColor1 : customColor2;
+  const opacityInput = index === 1 ? customOpacity1 : customOpacity2;
+  
+  const {r, g, b} = hexToRgbVals(hexInput.value);
+  const a = parseFloat(opacityInput.value || '1');
+  
+  cpR.value = cpRNum.value = r;
+  cpG.value = cpGNum.value = g;
+  cpB.value = cpBNum.value = b;
+  cpA.value = cpANum.value = a;
+  cpHexInput.value = hexInput.value;
+  
+  updateColorPickerUI(false);
+  if (advancedColorPicker) advancedColorPicker.style.display = 'flex';
+}
+
+function closeColorPicker() {
+  if (advancedColorPicker) advancedColorPicker.style.display = 'none';
+}
+
+function updateColorPickerUI(propagate = true) {
+  let r = parseInt(cpR.value) || 0;
+  let g = parseInt(cpG.value) || 0;
+  let b = parseInt(cpB.value) || 0;
+  let a = parseFloat(cpA.value);
+  if (isNaN(a)) a = 1;
+  
+  const hex = rgbToHexStr(r, g, b);
+  cpHexInput.value = hex;
+  cpCurrentColor.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+  
+  if (propagate) {
+    if (activeSwatchIndex === 1) {
+      customColor1.value = hex;
+      customOpacity1.value = a;
+      colorSwatch1.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+    } else {
+      customColor2.value = hex;
+      customOpacity2.value = a;
+      colorSwatch2.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+    updateCustomPreview();
+  }
+}
+
+if (colorSwatch1) colorSwatch1.addEventListener('click', () => openColorPicker(1));
+if (colorSwatch2) colorSwatch2.addEventListener('click', () => openColorPicker(2));
+if (cpClose) cpClose.addEventListener('click', closeColorPicker);
+
+[cpR, cpRNum, cpG, cpGNum, cpB, cpBNum, cpA, cpANum].forEach(input => {
+  if (input) {
+    input.addEventListener('input', (e) => {
+      if (e.target.type === 'range') {
+        document.getElementById(e.target.id + 'Num').value = e.target.value;
+      } else {
+        document.getElementById(e.target.id.replace('Num', '')).value = e.target.value;
+      }
+      updateColorPickerUI(true);
+    });
+  }
+});
+
+if (cpHexInput) {
+  cpHexInput.addEventListener('change', (e) => {
+    let val = e.target.value;
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#[0-9A-Fa-f]{6}$/i.test(val)) {
+      const {r, g, b} = hexToRgbVals(val);
+      cpR.value = cpRNum.value = r;
+      cpG.value = cpGNum.value = g;
+      cpB.value = cpBNum.value = b;
+      updateColorPickerUI(true);
+    }
+  });
+}

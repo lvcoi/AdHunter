@@ -444,3 +444,102 @@ h1 {
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
+/* NEW STYLES FOR COLOR PICKER */
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  padding: 0;
+  background-clip: padding-box;
+}
+
+.color-picker-panel {
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #c9d4f3;
+}
+
+.icon-button {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  padding: 4px;
+  cursor: pointer;
+  width: auto;
+}
+
+.icon-button:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.1);
+}
+
+.cp-preview-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cp-current-color {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.cp-hex-input {
+  flex: 1;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.cp-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-slider-group label {
+  width: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.cp-slider-group input[type="range"] {
+  flex: 1;
+}
+
+.cp-slider-group input[type="number"] {
+  width: 50px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px;
+  border-radius: 4px;
+  text-align: center;
+}
