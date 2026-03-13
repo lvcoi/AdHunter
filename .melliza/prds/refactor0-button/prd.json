@@ -1,0 +1,16 @@
+[
+  {
+    "id": "US-002",
+    "title": "Advanced Gradient Builder",
+    "description": "As a user, I want a gradient bar where I can place multiple color flags/markers so that I can create complex gradients with custom spacing and color order, rather than being limited to just 2 colors.",
+    "acceptanceCriteria": [
+      "UI includes a gradient bar representing the button's background/border.",
+      "Users can click the bar to add new color markers (more than 2).",
+      "Markers can be dragged left/right to adjust color stops (spacing).",
+      "Each marker's color can be changed using the advanced color palette.",
+      "Marker removal functionality exists."
+    ],
+    "priority": 2,
+    "passes": true
+  }
+]
