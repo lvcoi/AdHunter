@@ -72,21 +72,15 @@
           </div>
           
           <div class="control-group">
-            <label>Colors</label>
-            <div class="colors-row">
-              <div class="color-item">
-                <button type="button" class="color-swatch" id="colorSwatch1" style="background-color: rgba(255, 59, 48, 1)"></button>
-                <span>Color 1</span>
-                <input type="hidden" id="customColor1" value="#ff3b30" />
-                <input type="hidden" id="customOpacity1" value="1" />
-              </div>
-              <div class="color-item">
-                <button type="button" class="color-swatch" id="colorSwatch2" style="background-color: rgba(10, 132, 255, 1)"></button>
-                <span>Color 2</span>
-                <input type="hidden" id="customColor2" value="#0a84ff" />
-                <input type="hidden" id="customOpacity2" value="1" />
-              </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label>Gradient Colors</label>
+              <button type="button" id="removeMarkerBtn" class="danger" style="padding: 2px 6px; font-size: 11px; display: none;">Remove Marker</button>
             </div>
+            <div class="gradient-bar-container" id="gradientBarContainer">
+              <div class="gradient-bar" id="gradientBar"></div>
+              <div class="gradient-markers" id="gradientMarkers"></div>
+            </div>
+            <div class="subtle compact" style="font-size: 11px;">Click bar to add color. Drag markers to adjust.</div>
           </div>
 
           <div id="advancedColorPicker" class="color-picker-panel" style="display: none;">

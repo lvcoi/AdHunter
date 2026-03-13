@@ -28,6 +28,16 @@ function injectStyles() {
       to { --element-vault-angle: 360deg; }
     }
 
+    @keyframes element-vault-marching {
+      to { background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px; }
+    }
+
+    @keyframes element-vault-pulse {
+      0% { box-shadow: 0 0 0 0 var(--element-vault-pulse-color, transparent); }
+      70% { box-shadow: 0 0 0 10px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
     #${SHIELD_ID} {
       position: fixed;
       inset: 0;
@@ -108,9 +118,93 @@ function injectStyles() {
   document.documentElement.appendChild(style);
 }
 
+let customStyleConfig = null;
+
+function updateCustomStyleRule() {
+  let styleEl = document.getElementById(STYLE_ID + '_custom');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = STYLE_ID + '_custom';
+    document.documentElement.appendChild(styleEl);
+  }
+
+  if (!customStyleConfig) {
+    styleEl.textContent = '';
+    return;
+  }
+
+  const { thickness, animation, speed } = customStyleConfig;
+  let gradientStops = customStyleConfig.colors || [
+    { color: customStyleConfig.color1 || '#ff3b30', opacity: customStyleConfig.opacity1 || 1, position: 0 },
+    { color: customStyleConfig.color2 || '#0a84ff', opacity: customStyleConfig.opacity2 || 1, position: 100 }
+  ];
+  
+  function hexToRgba(hex, opacity) {
+    if (!hex) return `rgba(255,255,255,${opacity})`;
+    const r = parseInt(hex.slice(1, 3), 16) || 0;
+    const g = parseInt(hex.slice(3, 5), 16) || 0;
+    const b = parseInt(hex.slice(5, 7), 16) || 0;
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+
+  gradientStops.sort((a, b) => a.position - b.position);
+
+  let css = `#${OVERLAY_ID}[data-style="custom"] {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    background-image: none;
+    animation: none;
+    padding: 0;
+    -webkit-mask: none;
+    mask: none;
+    opacity: 1;
+`;
+
+  if (animation === 'gradient') {
+    const conicStops = gradientStops.map(stop => `${hexToRgba(stop.color, stop.opacity)} ${stop.position * 3.6}deg`).join(', ');
+    const firstStopColor = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
+    css += `
+      padding: ${thickness}px;
+      background: conic-gradient(from var(--element-vault-angle), ${conicStops}, ${firstStopColor} 360deg);
+      animation: element-vault-spin ${speed}s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    `;
+  } else if (animation === 'marching-ants') {
+    const c1 = gradientStops[0].color;
+    css += `
+      background: transparent;
+      background-image: 
+        linear-gradient(90deg, ${c1} 50%, transparent 50%),
+        linear-gradient(90deg, ${c1} 50%, transparent 50%),
+        linear-gradient(0deg, ${c1} 50%, transparent 50%),
+        linear-gradient(0deg, ${c1} 50%, transparent 50%);
+      background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+      background-size: 20px ${thickness}px, 20px ${thickness}px, ${thickness}px 20px, ${thickness}px 20px;
+      background-position: 0 0, 0 100%, 0 0, 100% 0;
+      animation: element-vault-marching ${speed}s linear infinite;
+      opacity: ${gradientStops[0].opacity};
+    `;
+  } else if (animation === 'pulsing') {
+    const color1 = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
+    const color2 = gradientStops.length > 1 ? hexToRgba(gradientStops[1].color, gradientStops[1].opacity) : color1;
+    css += `
+      border: ${thickness}px solid ${color1};
+      --element-vault-pulse-color: ${color2};
+      animation: element-vault-pulse ${speed}s ease-out infinite;
+    `;
+  }
+  css += `\n}`;
+  styleEl.textContent = css;
+}
+
 // Read initial style
-chrome.storage.sync.get({ activeHighlightStyle: 'rainbow' }, (data) => {
+chrome.storage.sync.get({ activeHighlightStyle: 'rainbow', customStyleConfig: null }, (data) => {
   activeHighlightStyle = data.activeHighlightStyle;
+  customStyleConfig = data.customStyleConfig;
+  updateCustomStyleRule();
   const overlay = document.getElementById(OVERLAY_ID);
   if (overlay) {
     overlay.setAttribute('data-style', activeHighlightStyle);
@@ -119,11 +213,17 @@ chrome.storage.sync.get({ activeHighlightStyle: 'rainbow' }, (data) => {
 
 // Listen for style changes
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'sync' && changes.activeHighlightStyle) {
-    activeHighlightStyle = changes.activeHighlightStyle.newValue;
-    const overlay = document.getElementById(OVERLAY_ID);
-    if (overlay) {
-      overlay.setAttribute('data-style', activeHighlightStyle);
+  if (areaName === 'sync') {
+    if (changes.activeHighlightStyle) {
+      activeHighlightStyle = changes.activeHighlightStyle.newValue;
+      const overlay = document.getElementById(OVERLAY_ID);
+      if (overlay) {
+        overlay.setAttribute('data-style', activeHighlightStyle);
+      }
+    }
+    if (changes.customStyleConfig) {
+      customStyleConfig = changes.customStyleConfig.newValue;
+      updateCustomStyleRule();
     }
   }
 });

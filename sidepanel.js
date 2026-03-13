@@ -340,29 +340,114 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 refresh().catch(console.error);
 
 const customThickness = document.getElementById('customThickness');
-const customColor1 = document.getElementById('customColor1');
-const customOpacity1 = document.getElementById('customOpacity1');
-const customColor2 = document.getElementById('customColor2');
-const customOpacity2 = document.getElementById('customOpacity2');
 const customAnimation = document.getElementById('customAnimation');
 const customSpeed = document.getElementById('customSpeed');
 const customPreview = document.getElementById('customPreview');
 const thicknessValue = document.getElementById('thicknessValue');
 const speedValue = document.getElementById('speedValue');
 
+let gradientStops = [
+  { color: '#ff3b30', opacity: 1, position: 0 },
+  { color: '#0a84ff', opacity: 1, position: 100 }
+];
+let activeMarkerIndex = -1;
+
+const gradientBarContainer = document.getElementById('gradientBarContainer');
+const gradientBar = document.getElementById('gradientBar');
+const gradientMarkers = document.getElementById('gradientMarkers');
+const removeMarkerBtn = document.getElementById('removeMarkerBtn');
+
 function hexToRgba(hex, opacity) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const r = parseInt(hex.slice(1, 3), 16) || 0;
+  const g = parseInt(hex.slice(3, 5), 16) || 0;
+  const b = parseInt(hex.slice(5, 7), 16) || 0;
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+function renderGradientBar() {
+  if (!gradientBar || !gradientMarkers) return;
+
+  gradientStops.sort((a, b) => a.position - b.position);
+
+  const linearStops = gradientStops.map(stop => `${hexToRgba(stop.color, stop.opacity)} ${stop.position}%`).join(', ');
+  gradientBar.style.background = `linear-gradient(90deg, ${linearStops})`;
+
+  gradientMarkers.innerHTML = '';
+  gradientStops.forEach((stop, index) => {
+    const marker = document.createElement('div');
+    marker.className = `gradient-marker${index === activeMarkerIndex ? ' active' : ''}`;
+    marker.style.left = `${stop.position}%`;
+    marker.style.setProperty('--marker-color', hexToRgba(stop.color, stop.opacity));
+    
+    marker.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      activeMarkerIndex = index;
+      renderGradientBar();
+      openColorPicker(index);
+      
+      const containerRect = gradientBarContainer.getBoundingClientRect();
+      const onMouseMove = (moveEvent) => {
+        let newPos = ((moveEvent.clientX - containerRect.left) / containerRect.width) * 100;
+        newPos = Math.max(0, Math.min(100, newPos));
+        gradientStops[activeMarkerIndex].position = newPos;
+        renderGradientBar();
+        updateCustomPreview();
+      };
+      
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        gradientStops.sort((a, b) => a.position - b.position);
+        activeMarkerIndex = gradientStops.findIndex(s => s === stop);
+        renderGradientBar();
+        updateCustomPreview();
+      };
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+    
+    gradientMarkers.appendChild(marker);
+  });
+  
+  if (removeMarkerBtn) {
+    removeMarkerBtn.style.display = (activeMarkerIndex !== -1 && gradientStops.length > 2) ? 'block' : 'none';
+  }
+}
+
+if (gradientBarContainer) {
+  gradientBarContainer.addEventListener('mousedown', (e) => {
+    const containerRect = gradientBarContainer.getBoundingClientRect();
+    let newPos = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+    newPos = Math.max(0, Math.min(100, newPos));
+    
+    const newStop = { color: '#ffffff', opacity: 1, position: newPos };
+    gradientStops.push(newStop);
+    gradientStops.sort((a, b) => a.position - b.position);
+    activeMarkerIndex = gradientStops.indexOf(newStop);
+    
+    renderGradientBar();
+    updateCustomPreview();
+    openColorPicker(activeMarkerIndex);
+  });
+}
+
+if (removeMarkerBtn) {
+  removeMarkerBtn.addEventListener('click', () => {
+    if (activeMarkerIndex !== -1 && gradientStops.length > 2) {
+      gradientStops.splice(activeMarkerIndex, 1);
+      activeMarkerIndex = -1;
+      closeColorPicker();
+      renderGradientBar();
+      updateCustomPreview();
+    }
+  });
 }
 
 function updateCustomPreview() {
   if (!customPreview) return;
 
   const thickness = customThickness.value;
-  const color1 = hexToRgba(customColor1.value, customOpacity1.value);
-  const color2 = hexToRgba(customColor2.value, customOpacity2.value);
   const animation = customAnimation.value;
   const speed = customSpeed.value;
 
@@ -380,16 +465,20 @@ function updateCustomPreview() {
   customPreview.style.mask = 'none';
   customPreview.style.opacity = '1';
 
+  gradientStops.sort((a, b) => a.position - b.position);
+
   if (animation === 'gradient') {
+    const conicStops = gradientStops.map(stop => `${hexToRgba(stop.color, stop.opacity)} ${stop.position * 3.6}deg`).join(', ');
+    const firstStopColor = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
     customPreview.style.padding = `${thickness}px`;
-    customPreview.style.background = `conic-gradient(from var(--preview-angle), ${color1} 0deg, ${color2} 180deg, ${color1} 360deg)`;
+    customPreview.style.background = `conic-gradient(from var(--preview-angle), ${conicStops}, ${firstStopColor} 360deg)`;
     customPreview.style.animation = `preview-spin ${speed}s linear infinite`;
     customPreview.style.webkitMask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
     customPreview.style.webkitMaskComposite = 'xor';
     customPreview.style.maskComposite = 'exclude';
   } else if (animation === 'marching-ants') {
     customPreview.style.background = 'transparent';
-    const c1 = customColor1.value;
+    const c1 = gradientStops[0].color;
     customPreview.style.backgroundImage = `
       linear-gradient(90deg, ${c1} 50%, transparent 50%),
       linear-gradient(90deg, ${c1} 50%, transparent 50%),
@@ -400,8 +489,10 @@ function updateCustomPreview() {
     customPreview.style.backgroundSize = `20px ${thickness}px, 20px ${thickness}px, ${thickness}px 20px, ${thickness}px 20px`;
     customPreview.style.backgroundPosition = `0 0, 0 100%, 0 0, 100% 0`;
     customPreview.style.animation = `preview-marching ${speed}s linear infinite`;
-    customPreview.style.opacity = customOpacity1.value;
+    customPreview.style.opacity = gradientStops[0].opacity;
   } else if (animation === 'pulsing') {
+    const color1 = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
+    const color2 = gradientStops.length > 1 ? hexToRgba(gradientStops[1].color, gradientStops[1].opacity) : color1;
     customPreview.style.border = `${thickness}px solid ${color1}`;
     customPreview.style.setProperty('--pulse-color', color2);
     customPreview.style.animation = `preview-pulse ${speed}s ease-out infinite`;
@@ -409,8 +500,7 @@ function updateCustomPreview() {
 }
 
 [
-  customThickness, customColor1, customOpacity1, 
-  customColor2, customOpacity2, customAnimation, customSpeed
+  customThickness, customAnimation, customSpeed
 ].forEach(el => {
   if (el) {
     el.addEventListener('input', updateCustomPreview);
@@ -424,10 +514,7 @@ if (saveCustomStyleButton) {
   saveCustomStyleButton.addEventListener('click', async () => {
     const customStyleConfig = {
       thickness: customThickness.value,
-      color1: customColor1.value,
-      opacity1: customOpacity1.value,
-      color2: customColor2.value,
-      opacity2: customOpacity2.value,
+      colors: gradientStops,
       animation: customAnimation.value,
       speed: customSpeed.value
     };
@@ -461,15 +548,21 @@ chrome.storage.sync.get({
   }
   if (data.customStyleConfig) {
     if (customThickness) customThickness.value = data.customStyleConfig.thickness;
-    if (customColor1) customColor1.value = data.customStyleConfig.color1;
-    if (customOpacity1) customOpacity1.value = data.customStyleConfig.opacity1;
-    if (customColor2) customColor2.value = data.customStyleConfig.color2;
-    if (customOpacity2) customOpacity2.value = data.customStyleConfig.opacity2;
     if (customAnimation) customAnimation.value = data.customStyleConfig.animation;
     if (customSpeed) customSpeed.value = data.customStyleConfig.speed;
+    
+    // Migrate old format or load new format
+    if (data.customStyleConfig.colors) {
+      gradientStops = data.customStyleConfig.colors;
+    } else if (data.customStyleConfig.color1) {
+      gradientStops = [
+        { color: data.customStyleConfig.color1, opacity: data.customStyleConfig.opacity1 || 1, position: 0 },
+        { color: data.customStyleConfig.color2, opacity: data.customStyleConfig.opacity2 || 1, position: 100 }
+      ];
+    }
   }
+  renderGradientBar();
   updateCustomPreview();
-  updateSwatches();
 });
 
 // Advanced Color Palette Logic
@@ -486,11 +579,6 @@ const cpBNum = document.getElementById('cpBNum');
 const cpA = document.getElementById('cpA');
 const cpANum = document.getElementById('cpANum');
 
-const colorSwatch1 = document.getElementById('colorSwatch1');
-const colorSwatch2 = document.getElementById('colorSwatch2');
-
-let activeSwatchIndex = 1;
-
 function hexToRgbVals(hex) {
   if (!hex) return { r: 0, g: 0, b: 0 };
   if (hex.length === 4) {
@@ -506,30 +594,19 @@ function rgbToHexStr(r, g, b) {
   return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
-function updateSwatches() {
-  if (colorSwatch1 && customColor1 && customOpacity1) {
-    const {r, g, b} = hexToRgbVals(customColor1.value);
-    colorSwatch1.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${customOpacity1.value})`;
-  }
-  if (colorSwatch2 && customColor2 && customOpacity2) {
-    const {r, g, b} = hexToRgbVals(customColor2.value);
-    colorSwatch2.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${customOpacity2.value})`;
-  }
-}
-
 function openColorPicker(index) {
-  activeSwatchIndex = index;
-  const hexInput = index === 1 ? customColor1 : customColor2;
-  const opacityInput = index === 1 ? customOpacity1 : customOpacity2;
+  activeMarkerIndex = index;
+  const stop = gradientStops[index];
+  if (!stop) return;
   
-  const {r, g, b} = hexToRgbVals(hexInput.value);
-  const a = parseFloat(opacityInput.value || '1');
+  const {r, g, b} = hexToRgbVals(stop.color);
+  const a = parseFloat(stop.opacity || '1');
   
   cpR.value = cpRNum.value = r;
   cpG.value = cpGNum.value = g;
   cpB.value = cpBNum.value = b;
   cpA.value = cpANum.value = a;
-  cpHexInput.value = hexInput.value;
+  cpHexInput.value = stop.color;
   
   updateColorPickerUI(false);
   if (advancedColorPicker) advancedColorPicker.style.display = 'flex';
@@ -537,6 +614,8 @@ function openColorPicker(index) {
 
 function closeColorPicker() {
   if (advancedColorPicker) advancedColorPicker.style.display = 'none';
+  activeMarkerIndex = -1;
+  renderGradientBar();
 }
 
 function updateColorPickerUI(propagate = true) {
@@ -550,22 +629,14 @@ function updateColorPickerUI(propagate = true) {
   cpHexInput.value = hex;
   cpCurrentColor.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
   
-  if (propagate) {
-    if (activeSwatchIndex === 1) {
-      customColor1.value = hex;
-      customOpacity1.value = a;
-      colorSwatch1.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
-    } else {
-      customColor2.value = hex;
-      customOpacity2.value = a;
-      colorSwatch2.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
-    }
+  if (propagate && activeMarkerIndex !== -1 && gradientStops[activeMarkerIndex]) {
+    gradientStops[activeMarkerIndex].color = hex;
+    gradientStops[activeMarkerIndex].opacity = a;
+    renderGradientBar();
     updateCustomPreview();
   }
 }
 
-if (colorSwatch1) colorSwatch1.addEventListener('click', () => openColorPicker(1));
-if (colorSwatch2) colorSwatch2.addEventListener('click', () => openColorPicker(2));
 if (cpClose) cpClose.addEventListener('click', closeColorPicker);
 
 [cpR, cpRNum, cpG, cpGNum, cpB, cpBNum, cpA, cpANum].forEach(input => {
