@@ -357,11 +357,11 @@ const gradientBar = document.getElementById('gradientBar');
 const gradientMarkers = document.getElementById('gradientMarkers');
 const removeMarkerBtn = document.getElementById('removeMarkerBtn');
 
-function hexToRgba(hex, opacity) {
-  const r = parseInt(hex.slice(1, 3), 16) || 0;
-  const g = parseInt(hex.slice(3, 5), 16) || 0;
-  const b = parseInt(hex.slice(5, 7), 16) || 0;
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+function hexToRgba(colorStr, opacity) {
+  const parsed = parseColorStr(colorStr);
+  if (!parsed) return `rgba(0, 0, 0, ${opacity !== undefined ? opacity : 1})`;
+  const finalAlpha = (opacity !== undefined && opacity !== null) ? opacity : parsed.a;
+  return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${finalAlpha})`;
 }
 
 function renderGradientBar() {
@@ -584,12 +584,13 @@ function parseColorStr(val) {
   val = val.trim();
   let r = 0, g = 0, b = 0, a = 1;
 
-  // Try parsing rgba() or rgb()
-  const rgbaMatch = val.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/i);
+  // Try parsing rgba() or rgb() with numbers or percentages
+  const rgbaMatch = val.match(/rgba?\s*\(\s*(\d+%?)\s*,\s*(\d+%?)\s*,\s*(\d+%?)(?:\s*,\s*([\d.]+))?\s*\)/i);
   if (rgbaMatch) {
-    r = Math.min(255, Math.max(0, parseInt(rgbaMatch[1], 10)));
-    g = Math.min(255, Math.max(0, parseInt(rgbaMatch[2], 10)));
-    b = Math.min(255, Math.max(0, parseInt(rgbaMatch[3], 10)));
+    const parseChannel = (str) => str.endsWith('%') ? Math.round(parseFloat(str) * 2.55) : parseInt(str, 10);
+    r = Math.min(255, Math.max(0, parseChannel(rgbaMatch[1])));
+    g = Math.min(255, Math.max(0, parseChannel(rgbaMatch[2])));
+    b = Math.min(255, Math.max(0, parseChannel(rgbaMatch[3])));
     if (rgbaMatch[4] !== undefined) {
       a = Math.min(1, Math.max(0, parseFloat(rgbaMatch[4])));
     }
@@ -695,26 +696,30 @@ if (cpClose) cpClose.addEventListener('click', closeColorPicker);
 
 [cpR, cpRNum, cpG, cpGNum, cpB, cpBNum, cpA, cpANum].forEach(input => {
   if (input) {
-    input.addEventListener('input', (e) => {
-      if (e.target.type === 'range') {
-        document.getElementById(e.target.id + 'Num').value = e.target.value;
-      } else {
-        document.getElementById(e.target.id.replace('Num', '')).value = e.target.value;
-      }
-      updateColorPickerUI(true);
+    ['input', 'change'].forEach(evt => {
+      input.addEventListener(evt, (e) => {
+        if (e.target.type === 'range') {
+          document.getElementById(e.target.id + 'Num').value = e.target.value;
+        } else {
+          document.getElementById(e.target.id.replace('Num', '')).value = e.target.value;
+        }
+        updateColorPickerUI(true);
+      });
     });
   }
 });
 
 if (cpHexInput) {
-  cpHexInput.addEventListener('change', (e) => {
-    const parsed = parseColorStr(e.target.value);
-    if (parsed) {
-      cpR.value = cpRNum.value = parsed.r;
-      cpG.value = cpGNum.value = parsed.g;
-      cpB.value = cpBNum.value = parsed.b;
-      cpA.value = cpANum.value = parsed.a;
-      updateColorPickerUI(true);
-    }
+  ['input', 'change'].forEach(evt => {
+    cpHexInput.addEventListener(evt, (e) => {
+      const parsed = parseColorStr(e.target.value);
+      if (parsed) {
+        cpR.value = cpRNum.value = parsed.r;
+        cpG.value = cpGNum.value = parsed.g;
+        cpB.value = cpBNum.value = parsed.b;
+        cpA.value = cpANum.value = parsed.a;
+        updateColorPickerUI(true);
+      }
+    });
   });
 }
