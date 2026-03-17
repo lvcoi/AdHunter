@@ -579,15 +579,59 @@ const cpBNum = document.getElementById('cpBNum');
 const cpA = document.getElementById('cpA');
 const cpANum = document.getElementById('cpANum');
 
-function hexToRgbVals(hex) {
-  if (!hex) return { r: 0, g: 0, b: 0 };
-  if (hex.length === 4) {
-    hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+function parseColorStr(val) {
+  if (!val) return null;
+  val = val.trim();
+  let r = 0, g = 0, b = 0, a = 1;
+
+  // Try parsing rgba() or rgb()
+  const rgbaMatch = val.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/i);
+  if (rgbaMatch) {
+    r = Math.min(255, Math.max(0, parseInt(rgbaMatch[1], 10)));
+    g = Math.min(255, Math.max(0, parseInt(rgbaMatch[2], 10)));
+    b = Math.min(255, Math.max(0, parseInt(rgbaMatch[3], 10)));
+    if (rgbaMatch[4] !== undefined) {
+      a = Math.min(1, Math.max(0, parseFloat(rgbaMatch[4])));
+    }
+    return { r, g, b, a };
   }
-  const r = parseInt(hex.slice(1, 3), 16) || 0;
-  const g = parseInt(hex.slice(3, 5), 16) || 0;
-  const b = parseInt(hex.slice(5, 7), 16) || 0;
-  return { r, g, b };
+
+  // Handle Hex
+  if (!val.startsWith('#') && /^[0-9A-Fa-f]{3,8}$/.test(val)) {
+    val = '#' + val;
+  }
+  
+  if (/^#[0-9A-Fa-f]{3}$/i.test(val)) {
+    r = parseInt(val[1] + val[1], 16);
+    g = parseInt(val[2] + val[2], 16);
+    b = parseInt(val[3] + val[3], 16);
+    return { r, g, b, a: 1 };
+  } else if (/^#[0-9A-Fa-f]{4}$/i.test(val)) {
+    r = parseInt(val[1] + val[1], 16);
+    g = parseInt(val[2] + val[2], 16);
+    b = parseInt(val[3] + val[3], 16);
+    a = parseInt(val[4] + val[4], 16) / 255;
+    return { r, g, b, a: Number(a.toFixed(2)) };
+  } else if (/^#[0-9A-Fa-f]{6}$/i.test(val)) {
+    r = parseInt(val.slice(1, 3), 16);
+    g = parseInt(val.slice(3, 5), 16);
+    b = parseInt(val.slice(5, 7), 16);
+    return { r, g, b, a: 1 };
+  } else if (/^#[0-9A-Fa-f]{8}$/i.test(val)) {
+    r = parseInt(val.slice(1, 3), 16);
+    g = parseInt(val.slice(3, 5), 16);
+    b = parseInt(val.slice(5, 7), 16);
+    a = parseInt(val.slice(7, 9), 16) / 255;
+    return { r, g, b, a: Number(a.toFixed(2)) };
+  }
+
+  return null;
+}
+
+function hexToRgbVals(hex) {
+  const parsed = parseColorStr(hex);
+  if (parsed) return { r: parsed.r, g: parsed.g, b: parsed.b };
+  return { r: 0, g: 0, b: 0 };
 }
 
 function rgbToHexStr(r, g, b) {
@@ -599,14 +643,18 @@ function openColorPicker(index) {
   const stop = gradientStops[index];
   if (!stop) return;
   
-  const {r, g, b} = hexToRgbVals(stop.color);
-  const a = parseFloat(stop.opacity || '1');
+  let parsed = parseColorStr(stop.color);
+  if (!parsed) parsed = { r: 0, g: 0, b: 0, a: 1 };
+  
+  const r = parsed.r;
+  const g = parsed.g;
+  const b = parsed.b;
+  const a = stop.opacity !== undefined ? parseFloat(stop.opacity) : parsed.a;
   
   cpR.value = cpRNum.value = r;
   cpG.value = cpGNum.value = g;
   cpB.value = cpBNum.value = b;
   cpA.value = cpANum.value = a;
-  cpHexInput.value = stop.color;
   
   updateColorPickerUI(false);
   if (advancedColorPicker) advancedColorPicker.style.display = 'flex';
@@ -626,7 +674,13 @@ function updateColorPickerUI(propagate = true) {
   if (isNaN(a)) a = 1;
   
   const hex = rgbToHexStr(r, g, b);
-  cpHexInput.value = hex;
+  
+  if (a === 1) {
+    cpHexInput.value = hex;
+  } else {
+    cpHexInput.value = `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  
   cpCurrentColor.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
   
   if (propagate && activeMarkerIndex !== -1 && gradientStops[activeMarkerIndex]) {
@@ -654,13 +708,12 @@ if (cpClose) cpClose.addEventListener('click', closeColorPicker);
 
 if (cpHexInput) {
   cpHexInput.addEventListener('change', (e) => {
-    let val = e.target.value;
-    if (!val.startsWith('#')) val = '#' + val;
-    if (/^#[0-9A-Fa-f]{6}$/i.test(val)) {
-      const {r, g, b} = hexToRgbVals(val);
-      cpR.value = cpRNum.value = r;
-      cpG.value = cpGNum.value = g;
-      cpB.value = cpBNum.value = b;
+    const parsed = parseColorStr(e.target.value);
+    if (parsed) {
+      cpR.value = cpRNum.value = parsed.r;
+      cpG.value = cpGNum.value = parsed.g;
+      cpB.value = cpBNum.value = parsed.b;
+      cpA.value = cpANum.value = parsed.a;
       updateColorPickerUI(true);
     }
   });
