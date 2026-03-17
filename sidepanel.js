@@ -360,7 +360,8 @@ const removeMarkerBtn = document.getElementById('removeMarkerBtn');
 function hexToRgba(colorStr, opacity) {
   const parsed = parseColorStr(colorStr);
   if (!parsed) return `rgba(0, 0, 0, ${opacity !== undefined ? opacity : 1})`;
-  const finalAlpha = (opacity !== undefined && opacity !== null) ? opacity : parsed.a;
+  const explicitAlpha = (opacity !== undefined && opacity !== null) ? opacity : 1;
+  const finalAlpha = parsed.a !== 1 ? parsed.a : explicitAlpha;
   return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${finalAlpha})`;
 }
 
@@ -584,15 +585,17 @@ function parseColorStr(val) {
   val = val.trim();
   let r = 0, g = 0, b = 0, a = 1;
 
-  // Try parsing rgba() or rgb() with numbers or percentages
-  const rgbaMatch = val.match(/rgba?\s*\(\s*(\d+%?)\s*,\s*(\d+%?)\s*,\s*(\d+%?)(?:\s*,\s*([\d.]+))?\s*\)/i);
+  // Try parsing rgba() or rgb() with numbers or percentages, supporting both comma and space separators (e.g. rgb(255 0 0 / 0.5))
+  const rgbaMatch = val.match(/rgba?\s*\(\s*([\d.]+%?)(?:\s*,\s*|\s+)([\d.]+%?)(?:\s*,\s*|\s+)([\d.]+%?)(?:(?:\s*,\s*|\s*\/\s*)([\d.]+%?))?\s*\)/i);
   if (rgbaMatch) {
     const parseChannel = (str) => str.endsWith('%') ? Math.round(parseFloat(str) * 2.55) : parseInt(str, 10);
     r = Math.min(255, Math.max(0, parseChannel(rgbaMatch[1])));
     g = Math.min(255, Math.max(0, parseChannel(rgbaMatch[2])));
     b = Math.min(255, Math.max(0, parseChannel(rgbaMatch[3])));
     if (rgbaMatch[4] !== undefined) {
-      a = Math.min(1, Math.max(0, parseFloat(rgbaMatch[4])));
+      const alphaStr = rgbaMatch[4];
+      a = alphaStr.endsWith('%') ? parseFloat(alphaStr) / 100 : parseFloat(alphaStr);
+      a = Math.min(1, Math.max(0, a));
     }
     return { r, g, b, a };
   }
@@ -684,11 +687,16 @@ function updateColorPickerUI(propagate = true) {
   
   cpCurrentColor.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
   
-  if (propagate && activeMarkerIndex !== -1 && gradientStops[activeMarkerIndex]) {
-    gradientStops[activeMarkerIndex].color = hex;
-    gradientStops[activeMarkerIndex].opacity = a;
-    renderGradientBar();
-    updateCustomPreview();
+  if (propagate) {
+    if (activeMarkerIndex === -1 && gradientStops.length > 0) {
+      activeMarkerIndex = 0;
+    }
+    if (activeMarkerIndex !== -1 && gradientStops[activeMarkerIndex]) {
+      gradientStops[activeMarkerIndex].color = hex;
+      gradientStops[activeMarkerIndex].opacity = a;
+      renderGradientBar();
+      updateCustomPreview();
+    }
   }
 }
 
