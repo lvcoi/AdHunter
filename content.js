@@ -139,12 +139,40 @@ function updateCustomStyleRule() {
     { color: customStyleConfig.color2 || '#0a84ff', opacity: customStyleConfig.opacity2 || 1, position: 100 }
   ];
   
-  function hexToRgba(hex, opacity) {
-    if (!hex) return `rgba(255,255,255,${opacity})`;
-    const r = parseInt(hex.slice(1, 3), 16) || 0;
-    const g = parseInt(hex.slice(3, 5), 16) || 0;
-    const b = parseInt(hex.slice(5, 7), 16) || 0;
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    function hexToRgba(colorStr, opacity) {
+    if (!colorStr) return `rgba(255,255,255,${opacity})`;
+    colorStr = colorStr.trim();
+    const explicitAlpha = (opacity !== undefined && opacity !== null) ? parseFloat(opacity) : 1;
+    
+    const rgbaMatch = colorStr.match(/rgba?\s*\(\s*([\d.]+%?)(?:\s*,\s*|\s+)([\d.]+%?)(?:\s*,\s*|\s+)([\d.]+%?)(?:(?:\s*,\s*|\s*\/\s*)([\d.]+%?))?\s*\)/i);
+    if (rgbaMatch) {
+      const parseChannel = (str) => str.endsWith('%') ? Math.round(parseFloat(str) * 2.55) : parseInt(str, 10);
+      const r = Math.min(255, Math.max(0, parseChannel(rgbaMatch[1])));
+      const g = Math.min(255, Math.max(0, parseChannel(rgbaMatch[2])));
+      const b = Math.min(255, Math.max(0, parseChannel(rgbaMatch[3])));
+      let a = explicitAlpha;
+      if (rgbaMatch[4] !== undefined) {
+        const alphaStr = rgbaMatch[4];
+        const parsedA = alphaStr.endsWith('%') ? parseFloat(alphaStr) / 100 : parseFloat(alphaStr);
+        a = parsedA !== 1 ? parsedA : explicitAlpha;
+      }
+      return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+    
+    if (!colorStr.startsWith('#') && /^[0-9A-Fa-f]{3,8}$/.test(colorStr)) colorStr = '#' + colorStr;
+    let r = 0, g = 0, b = 0, a = explicitAlpha;
+    if (/^#[0-9A-Fa-f]{3}$/i.test(colorStr)) {
+      r = parseInt(colorStr[1] + colorStr[1], 16); g = parseInt(colorStr[2] + colorStr[2], 16); b = parseInt(colorStr[3] + colorStr[3], 16);
+    } else if (/^#[0-9A-Fa-f]{4}$/i.test(colorStr)) {
+      r = parseInt(colorStr[1] + colorStr[1], 16); g = parseInt(colorStr[2] + colorStr[2], 16); b = parseInt(colorStr[3] + colorStr[3], 16); a = parseInt(colorStr[4] + colorStr[4], 16) / 255;
+    } else if (/^#[0-9A-Fa-f]{6}$/i.test(colorStr)) {
+      r = parseInt(colorStr.slice(1, 3), 16); g = parseInt(colorStr.slice(3, 5), 16); b = parseInt(colorStr.slice(5, 7), 16);
+    } else if (/^#[0-9A-Fa-f]{8}$/i.test(colorStr)) {
+      r = parseInt(colorStr.slice(1, 3), 16); g = parseInt(colorStr.slice(3, 5), 16); b = parseInt(colorStr.slice(5, 7), 16); a = parseInt(colorStr.slice(7, 9), 16) / 255;
+    }
+    
+    a = a !== 1 ? a : explicitAlpha;
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
   }
 
   gradientStops.sort((a, b) => a.position - b.position);

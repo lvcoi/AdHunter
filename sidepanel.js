@@ -653,7 +653,7 @@ function openColorPicker(index) {
   const r = parsed.r;
   const g = parsed.g;
   const b = parsed.b;
-  const a = stop.opacity !== undefined ? parseFloat(stop.opacity) : parsed.a;
+  const a = parsed.a !== 1 ? parsed.a : (stop.opacity !== undefined ? parseFloat(stop.opacity) : 1);
   
   cpR.value = cpRNum.value = r;
   cpG.value = cpGNum.value = g;
@@ -670,7 +670,7 @@ function closeColorPicker() {
   renderGradientBar();
 }
 
-function updateColorPickerUI(propagate = true) {
+function updateColorPickerUI(propagate = true, source = null) {
   let r = parseInt(cpR.value) || 0;
   let g = parseInt(cpG.value) || 0;
   let b = parseInt(cpB.value) || 0;
@@ -679,10 +679,12 @@ function updateColorPickerUI(propagate = true) {
   
   const hex = rgbToHexStr(r, g, b);
   
-  if (a === 1) {
-    cpHexInput.value = hex;
-  } else {
-    cpHexInput.value = `rgba(${r}, ${g}, ${b}, ${a})`;
+  if (source !== 'hex') {
+    if (a === 1) {
+      cpHexInput.value = hex;
+    } else {
+      cpHexInput.value = `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
   }
   
   cpCurrentColor.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
@@ -711,7 +713,7 @@ if (cpClose) cpClose.addEventListener('click', closeColorPicker);
         } else {
           document.getElementById(e.target.id.replace('Num', '')).value = e.target.value;
         }
-        updateColorPickerUI(true);
+        updateColorPickerUI(true, 'slider');
       });
     });
   }
@@ -726,7 +728,7 @@ if (cpHexInput) {
         cpG.value = cpGNum.value = parsed.g;
         cpB.value = cpBNum.value = parsed.b;
         cpA.value = cpANum.value = parsed.a;
-        updateColorPickerUI(true);
+        updateColorPickerUI(true, 'hex');
       }
     });
   });
