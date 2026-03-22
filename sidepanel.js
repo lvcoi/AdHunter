@@ -564,6 +564,9 @@ chrome.storage.sync.get({
   }
   renderGradientBar();
   updateCustomPreview();
+  if (gradientStops && gradientStops.length > 0) {
+    openColorPicker(0);
+  }
 });
 
 // Advanced Color Palette Logic

@@ -83,7 +83,7 @@
             <div class="subtle compact" style="font-size: 11px;">Click bar to add color. Drag markers to adjust.</div>
           </div>
 
-          <div id="advancedColorPicker" class="color-picker-panel" style="display: none;">
+          <div id="advancedColorPicker" class="color-picker-panel">
             <div class="cp-header">
               <span id="cpTitle">Advanced Color Palette</span>
               <button type="button" id="cpClose" class="icon-button">&times;</button>
@@ -94,22 +94,22 @@
             </div>
             <div class="cp-sliders">
               <div class="cp-slider-group">
-                <label for="cpR">Red (R)</label>
+                <label for="cpR">Red</label>
                 <input type="range" id="cpR" min="0" max="255" value="255" />
                 <input type="number" id="cpRNum" min="0" max="255" value="255" />
               </div>
               <div class="cp-slider-group">
-                <label for="cpG">Green (G)</label>
+                <label for="cpG">Green</label>
                 <input type="range" id="cpG" min="0" max="255" value="0" />
                 <input type="number" id="cpGNum" min="0" max="255" value="0" />
               </div>
               <div class="cp-slider-group">
-                <label for="cpB">Blue (B)</label>
+                <label for="cpB">Blue</label>
                 <input type="range" id="cpB" min="0" max="255" value="0" />
                 <input type="number" id="cpBNum" min="0" max="255" value="0" />
               </div>
               <div class="cp-slider-group">
-                <label for="cpA">Alpha (A)</label>
+                <label for="cpA">Alpha (transparency)</label>
                 <input type="range" id="cpA" min="0" max="1" step="0.01" value="1" />
                 <input type="number" id="cpANum" min="0" max="1" step="0.01" value="1" />
               </div>
@@ -131,10 +131,10 @@
           </div>
 
           <div class="preview-container">
-            <div class="preview-box">
+            <button type="button" class="preview-box" id="buttonPreview">
               <div id="customPreview"></div>
               <span>Preview</span>
-            </div>
+            </button>
           </div>
 
           <div class="control-group">
