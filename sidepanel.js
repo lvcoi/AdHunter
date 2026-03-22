@@ -691,6 +691,8 @@ function updateColorPickerUI(propagate = true, source = null) {
   }
   
   cpCurrentColor.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+  const btn = document.getElementById('buttonPreview');
+  if (btn) btn.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
   
   if (propagate) {
     if (activeMarkerIndex === -1 && gradientStops.length > 0) {
