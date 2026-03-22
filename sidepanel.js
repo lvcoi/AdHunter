@@ -671,10 +671,13 @@ function closeColorPicker() {
 }
 
 function updateColorPickerUI(propagate = true, source = null) {
-  let r = parseInt(cpR.value) || 0;
-  let g = parseInt(cpG.value) || 0;
-  let b = parseInt(cpB.value) || 0;
-  let a = parseFloat(cpA.value);
+  let r = parseInt(cpRNum.value);
+  if (isNaN(r)) r = 0;
+  let g = parseInt(cpGNum.value);
+  if (isNaN(g)) g = 0;
+  let b = parseInt(cpBNum.value);
+  if (isNaN(b)) b = 0;
+  let a = parseFloat(cpANum.value);
   if (isNaN(a)) a = 1;
   
   const hex = rgbToHexStr(r, g, b);
