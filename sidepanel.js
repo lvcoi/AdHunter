@@ -635,11 +635,7 @@ function parseColorStr(val) {
   return null;
 }
 
-function hexToRgbVals(hex) {
-  const parsed = parseColorStr(hex);
-  if (parsed) return { r: parsed.r, g: parsed.g, b: parsed.b };
-  return { r: 0, g: 0, b: 0 };
-}
+
 
 function rgbToHexStr(r, g, b) {
   return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -663,7 +659,8 @@ function openColorPicker(index) {
   cpB.value = cpBNum.value = b;
   cpA.value = cpANum.value = a;
   
-  updateColorPickerUI(false);
+  if (cpHexInput) cpHexInput.value = stop.color;
+  updateColorPickerUI(false, 'hex');
   if (advancedColorPicker) advancedColorPicker.style.display = 'flex';
 }
 
