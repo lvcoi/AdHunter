@@ -696,7 +696,7 @@ function updateColorPickerUI(propagate = true, source = null) {
       activeMarkerIndex = 0;
     }
     if (activeMarkerIndex !== -1 && gradientStops[activeMarkerIndex]) {
-      gradientStops[activeMarkerIndex].color = hex;
+      gradientStops[activeMarkerIndex].color = source === 'hex' ? cpHexInput.value : (a === 1 ? hex : `rgba(${r}, ${g}, ${b}, ${a})`);
       gradientStops[activeMarkerIndex].opacity = a;
       renderGradientBar();
       updateCustomPreview();
