@@ -1,3 +1,6 @@
+if (!window.__elementVaultInjected) {
+window.__elementVaultInjected = true;
+
 const REMOVED_NODE_MAP = new Map();
 const PLACEHOLDER_MAP = new Map();
 const MAX_STORED_ELEMENTS = 100;
@@ -804,7 +807,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-document.addEventListener('keydown', onKeyDown, true);
-window.addEventListener('pagehide', clearTransientState);
-window.addEventListener('scroll', onViewportChange, true);
-window.addEventListener('resize', onViewportChange, true);
+} // end re-injection guard

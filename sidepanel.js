@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'removedElementsByTab';
+
 
 const pickButton = document.getElementById('pickButton');
 const stopButton = document.getElementById('stopButton');
@@ -25,6 +25,19 @@ async function getActiveTab() {
   return tabs[0] || null;
 }
 
+async function ensureContentScriptInjected(tabId) {
+  try {
+    const res = await chrome.tabs.sendMessage(tabId, { type: 'PING_CONTENT_SCRIPT' });
+    if (res?.ok) return;
+  } catch (_) {
+    // Content script not loaded — inject it
+  }
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content.js']
+  });
+}
+
 async function sendToActiveTab(message) {
   const tab = await getActiveTab();
   if (!tab?.id) {
@@ -32,6 +45,7 @@ async function sendToActiveTab(message) {
   }
   activeTabId = tab.id;
   activeTabUrl = tab.url || '';
+  await ensureContentScriptInjected(tab.id);
   return chrome.tabs.sendMessage(tab.id, message);
 }
 
@@ -322,7 +336,7 @@ highlightStyleSelect.addEventListener('change', async () => {
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes[STORAGE_KEY]) {
+  if (areaName === 'session' && Object.keys(changes).some(k => k.startsWith('removed_'))) {
     refresh().catch(console.error);
   }
 });
