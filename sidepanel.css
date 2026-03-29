@@ -434,8 +434,15 @@ h1 {
   to { --preview-angle: 360deg; }
 }
 
-@keyframes preview-marching {
-  to { background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px; }
+    @keyframes preview-bg-move { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    @keyframes preview-diagonal { to { background-position: 100% 100%; } }
+    @keyframes preview-breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.02); opacity: 1; } }
+    @keyframes preview-radar { to { --preview-angle: 360deg; } }
+    @keyframes preview-double-pulse { 0% { box-shadow: 0 0 0 0 var(--pulse-color); } 50% { box-shadow: 0 0 0 10px transparent, 0 0 0 0 var(--pulse-color-alt); } 100% { box-shadow: 0 0 0 20px transparent, 0 0 0 10px transparent; } }
+    @keyframes preview-flicker { 0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--pulse-color); } 33% { opacity: 0.4; box-shadow: 0 0 2px var(--pulse-color); } 66% { opacity: 0.8; box-shadow: 0 0 15px var(--pulse-color); } }
+    @keyframes preview-glitch { 0% { clip-path: inset(0 0 0 0); } 20% { clip-path: inset(10% 0 80% 0); transform: translateX(-2px); } 40% { clip-path: inset(60% 0 10% 0); transform: translateX(2px); } 60% { clip-path: inset(20% 0 50% 0); transform: translateX(-1px); } 80% { clip-path: inset(80% 0 5% 0); transform: translateX(1px); } 100% { clip-path: inset(0 0 0 0); } }
+    @keyframes preview-ripple { 0% { box-shadow: 0 0 0 0 var(--pulse-color); } 100% { box-shadow: 0 0 0 15px transparent; border-radius: 50%; } }
+    @keyframes preview-chaos { 0% { filter: hue-rotate(0deg) contrast(100%); transform: skew(0deg, 0deg) scale(1); } 25% { filter: hue-rotate(90deg) contrast(150%); transform: skew(-5deg, 5deg) scale(1.05); } 50% { filter: hue-rotate(180deg) contrast(200%); transform: skew(5deg, -5deg) scale(0.95); } 75% { filter: hue-rotate(270deg) contrast(150%); transform: skew(-2deg, 2deg) scale(1.02); } 100% { filter: hue-rotate(360deg) contrast(100%); transform: skew(0deg, 0deg) scale(1); } }
 }
 
 @keyframes preview-pulse {

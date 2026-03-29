@@ -1,4 +1,3 @@
-const STORAGE_KEY = 'removedElementsByTab';
 const AD_RULESET_ID = 'adblock_rules';
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -8,15 +7,6 @@ chrome.runtime.onInstalled.addListener(async () => {
     console.error('Failed to configure side panel behavior:', error);
   }
 });
-
-async function getByTab() {
-  const current = await chrome.storage.local.get(STORAGE_KEY);
-  return current[STORAGE_KEY] || {};
-}
-
-async function saveByTab(byTab) {
-  await chrome.storage.local.set({ [STORAGE_KEY]: byTab });
-}
 
 async function getAdBlockerEnabled() {
   const enabledRulesets = await chrome.declarativeNetRequest.getEnabledRulesets();
@@ -43,35 +33,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         const payload = { ...message.payload, tabId };
-        const byTab = await getByTab();
-        const records = Array.isArray(byTab[tabId]) ? byTab[tabId] : [];
-        records.unshift(payload);
-        byTab[tabId] = records;
-        await saveByTab(byTab);
-        sendResponse({ ok: true, tabId, count: records.length });
+        const key = `removed_${tabId}_${payload.id}`;
+        
+        await chrome.storage.session.set({ [key]: payload });
+        
+        const all = await chrome.storage.session.get(null);
+        const count = Object.keys(all).filter(k => k.startsWith(`removed_${tabId}_`)).length;
+        sendResponse({ ok: true, tabId, count });
         return;
       }
 
       case 'GET_REMOVED_ELEMENTS': {
-        const byTab = await getByTab();
-        sendResponse({ ok: true, records: byTab[message.tabId] || [] });
+        const tabId = message.tabId;
+        const all = await chrome.storage.session.get(null);
+        const records = Object.keys(all)
+          .filter(k => k.startsWith(`removed_${tabId}_`))
+          .map(k => all[k])
+          .sort((a, b) => new Date(b.removedAt) - new Date(a.removedAt));
+        sendResponse({ ok: true, records });
         return;
       }
 
       case 'DELETE_REMOVED_ELEMENT_RECORD': {
         const { tabId, removeId } = message;
-        const byTab = await getByTab();
-        const records = Array.isArray(byTab[tabId]) ? byTab[tabId] : [];
-        byTab[tabId] = records.filter((item) => item.id !== removeId);
-        await saveByTab(byTab);
-        sendResponse({ ok: true, records: byTab[tabId] });
+        await chrome.storage.session.remove(`removed_${tabId}_${removeId}`);
+        const all = await chrome.storage.session.get(null);
+        const records = Object.keys(all)
+          .filter(k => k.startsWith(`removed_${tabId}_`))
+          .map(k => all[k])
+          .sort((a, b) => new Date(b.removedAt) - new Date(a.removedAt));
+        sendResponse({ ok: true, records });
         return;
       }
 
       case 'CLEAR_TAB_RECORDS': {
-        const byTab = await getByTab();
-        delete byTab[message.tabId];
-        await saveByTab(byTab);
+        const tabId = message.tabId;
+        const all = await chrome.storage.session.get(null);
+        const keysToRemove = Object.keys(all).filter(k => k.startsWith(`removed_${tabId}_`));
+        await chrome.storage.session.remove(keysToRemove);
         sendResponse({ ok: true });
         return;
       }
@@ -98,12 +97,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'loading') {
+    try {
+      const all = await chrome.storage.session.get(null);
+      const keysToRemove = Object.keys(all).filter(k => k.startsWith(`removed_${tabId}_`));
+      if (keysToRemove.length > 0) {
+        await chrome.storage.session.remove(keysToRemove);
+      }
+    } catch (error) {
+      console.error('Failed to clean up tab storage on navigation:', error);
+    }
+  }
+});
+
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   try {
-    const byTab = await getByTab();
-    if (byTab[tabId]) {
-      delete byTab[tabId];
-      await saveByTab(byTab);
+    const all = await chrome.storage.session.get(null);
+    const keysToRemove = Object.keys(all).filter(k => k.startsWith(`removed_${tabId}_`));
+    if (keysToRemove.length > 0) {
+      await chrome.storage.session.remove(keysToRemove);
     }
   } catch (error) {
     console.error('Failed to clean up tab storage:', error);

@@ -1,5 +1,16 @@
 const REMOVED_NODE_MAP = new Map();
 const PLACEHOLDER_MAP = new Map();
+const MAX_STORED_ELEMENTS = 100;
+
+function enforceMapSizeLimit() {
+  if (REMOVED_NODE_MAP.size > MAX_STORED_ELEMENTS) {
+    const oldestKey = REMOVED_NODE_MAP.keys().next().value;
+    if (oldestKey) {
+      REMOVED_NODE_MAP.delete(oldestKey);
+      PLACEHOLDER_MAP.delete(oldestKey);
+    }
+  }
+}
 const OVERLAY_ID = '__element_vault_overlay__';
 const SHIELD_ID = '__element_vault_capture_shield__';
 const STYLE_ID = '__element_vault_style__';
@@ -28,9 +39,15 @@ function injectStyles() {
       to { --element-vault-angle: 360deg; }
     }
 
-    @keyframes element-vault-marching {
-      to { background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px; }
-    }
+    @keyframes element-vault-bg-move { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    @keyframes element-vault-diagonal { to { background-position: 100% 100%; } }
+    @keyframes element-vault-breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.02); opacity: 1; } }
+    @keyframes element-vault-radar { to { --element-vault-angle: 360deg; } }
+    @keyframes element-vault-double-pulse { 0% { box-shadow: 0 0 0 0 var(--element-vault-pulse-color); } 50% { box-shadow: 0 0 0 10px transparent, 0 0 0 0 var(--element-vault-pulse-color-alt); } 100% { box-shadow: 0 0 0 20px transparent, 0 0 0 10px transparent; } }
+    @keyframes element-vault-flicker { 0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--element-vault-pulse-color); } 33% { opacity: 0.4; box-shadow: 0 0 2px var(--element-vault-pulse-color); } 66% { opacity: 0.8; box-shadow: 0 0 15px var(--element-vault-pulse-color); } }
+    @keyframes element-vault-glitch { 0% { clip-path: inset(0 0 0 0); } 20% { clip-path: inset(10% 0 80% 0); transform: translateX(-2px); } 40% { clip-path: inset(60% 0 10% 0); transform: translateX(2px); } 60% { clip-path: inset(20% 0 50% 0); transform: translateX(-1px); } 80% { clip-path: inset(80% 0 5% 0); transform: translateX(1px); } 100% { clip-path: inset(0 0 0 0); } }
+    @keyframes element-vault-ripple { 0% { box-shadow: 0 0 0 0 var(--element-vault-pulse-color); } 100% { box-shadow: 0 0 0 15px transparent; border-radius: 50%; } }
+    @keyframes element-vault-chaos { 0% { filter: hue-rotate(0deg) contrast(100%); transform: skew(0deg, 0deg) scale(1); } 25% { filter: hue-rotate(90deg) contrast(150%); transform: skew(-5deg, 5deg) scale(1.05); } 50% { filter: hue-rotate(180deg) contrast(200%); transform: skew(5deg, -5deg) scale(0.95); } 75% { filter: hue-rotate(270deg) contrast(150%); transform: skew(-2deg, 2deg) scale(1.02); } 100% { filter: hue-rotate(360deg) contrast(100%); transform: skew(0deg, 0deg) scale(1); } }
 
     @keyframes element-vault-pulse {
       0% { box-shadow: 0 0 0 0 var(--element-vault-pulse-color, transparent); }
@@ -133,7 +150,11 @@ function updateCustomStyleRule() {
     return;
   }
 
-  const { thickness, animation, speed } = customStyleConfig;
+  const rawThickness = customStyleConfig.thickness;
+  const rawSpeed = customStyleConfig.speed;
+  const animation = customStyleConfig.animation;
+  const thickness = isNaN(parseFloat(rawThickness)) ? 3 : parseFloat(rawThickness);
+  const speed = isNaN(parseFloat(rawSpeed)) ? 1 : parseFloat(rawSpeed);
   let gradientStops = customStyleConfig.colors || [
     { color: customStyleConfig.color1 || '#ff3b30', opacity: customStyleConfig.opacity1 || 1, position: 0 },
     { color: customStyleConfig.color2 || '#0a84ff', opacity: customStyleConfig.opacity2 || 1, position: 100 }
@@ -200,21 +221,83 @@ function updateCustomStyleRule() {
       -webkit-mask-composite: xor;
       mask-composite: exclude;
     `;
-  } else if (animation === 'marching-ants') {
-    const c1 = gradientStops[0].color;
-    css += `
-      background: transparent;
-      background-image: 
-        linear-gradient(90deg, ${c1} 50%, transparent 50%),
-        linear-gradient(90deg, ${c1} 50%, transparent 50%),
-        linear-gradient(0deg, ${c1} 50%, transparent 50%),
-        linear-gradient(0deg, ${c1} 50%, transparent 50%);
-      background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
-      background-size: 20px ${thickness}px, 20px ${thickness}px, ${thickness}px 20px, ${thickness}px 20px;
-      background-position: 0 0, 0 100%, 0 0, 100% 0;
-      animation: element-vault-marching ${speed}s linear infinite;
-      opacity: ${gradientStops[0].opacity};
-    `;
+    } else if (animation.startsWith('level-')) {
+    const level = parseInt(animation.split('-')[1]);
+    const color1 = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
+    const color2 = gradientStops.length > 1 ? hexToRgba(gradientStops[1].color, gradientStops[1].opacity) : color1;
+    
+    switch (level) {
+      case 1:
+        css += `
+          background: linear-gradient(270deg, ${color1}, ${color2});
+          background-size: 400% 400%;
+          animation: element-vault-bg-move ${speed}s ease infinite;
+        `;
+        break;
+      case 2:
+        css += `
+          background: repeating-linear-gradient(45deg, ${color1}, ${color1} 10px, ${color2} 10px, ${color2} 20px);
+          background-size: 200% 200%;
+          animation: element-vault-diagonal ${speed}s linear infinite;
+        `;
+        break;
+      case 3:
+        css += `
+          border: ${thickness}px solid ${color1};
+          animation: element-vault-breathe ${speed}s ease-in-out infinite alternate;
+        `;
+        break;
+      case 4:
+        css += `
+          padding: ${thickness}px;
+          background: conic-gradient(from var(--element-vault-angle), ${color1}, ${color2}, ${color1});
+          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          animation: element-vault-radar ${speed}s linear infinite;
+        `;
+        break;
+      case 5:
+        css += `
+          border: ${thickness}px dashed ${color1};
+          animation: element-vault-breathe ${speed}s linear infinite;
+        `;
+        break;
+      case 6:
+        css += `
+          border: ${thickness}px solid ${color1};
+          --element-vault-pulse-color: ${color1};
+          --element-vault-pulse-color-alt: ${color2};
+          animation: element-vault-double-pulse ${speed}s ease-out infinite;
+        `;
+        break;
+      case 7:
+        css += `
+          border: ${thickness}px solid ${color1};
+          --element-vault-pulse-color: ${color1};
+          animation: element-vault-flicker ${speed}s infinite;
+        `;
+        break;
+      case 8:
+        css += `
+          border: ${thickness}px solid ${color1};
+          animation: element-vault-glitch ${speed}s linear infinite;
+        `;
+        break;
+      case 9:
+        css += `
+          border: ${thickness}px solid ${color1};
+          --element-vault-pulse-color: ${color1};
+          animation: element-vault-ripple ${speed}s ease-out infinite;
+        `;
+        break;
+      case 10:
+        css += `
+          border: ${thickness}px solid ${color1};
+          animation: element-vault-chaos ${speed}s infinite;
+        `;
+        break;
+    }
   } else if (animation === 'pulsing') {
     const color1 = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
     const color2 = gradientStops.length > 1 ? hexToRgba(gradientStops[1].color, gradientStops[1].opacity) : color1;
@@ -324,7 +407,7 @@ function hideOverlay() {
 
 function isForbiddenTarget(element) {
   if (!element || element.nodeType !== Node.ELEMENT_NODE) return true;
-  if (element.id === OVERLAY_ID || element.id === STYLE_ID || element.id === SHIELD_ID) return true;
+  if (safeGetAttribute(element, 'id') === OVERLAY_ID || safeGetAttribute(element, 'id') === STYLE_ID || safeGetAttribute(element, 'id') === SHIELD_ID) return true;
 
   const tag = element.tagName.toLowerCase();
   return ['html', 'body', 'head', 'script', 'style', 'link', 'meta', 'title'].includes(tag);
@@ -338,24 +421,39 @@ function cssEscapeSafe(value) {
   }
 }
 
+
+function safeGetAttribute(el, attr) {
+  return Element.prototype.getAttribute.call(el, attr);
+}
+function safeGetTagName(el) {
+  const desc = Object.getOwnPropertyDescriptor(Element.prototype, 'tagName');
+  return desc && desc.get ? desc.get.call(el).toLowerCase() : el.tagName.toLowerCase();
+}
+function safeGetClassList(el) {
+  const cls = safeGetAttribute(el, 'class');
+  return cls ? cls.trim().split(/\s+/) : [];
+}
+
 function getNodePath(element) {
   if (!element || element.nodeType !== Node.ELEMENT_NODE) return null;
-  if (element.id) return `#${cssEscapeSafe(element.id)}`;
+  const id = safeGetAttribute(element, 'id');
+  if (id) return `#${cssEscapeSafe(id)}`;
 
   const segments = [];
   let cursor = element;
   while (cursor && cursor.nodeType === Node.ELEMENT_NODE) {
-    const tag = cursor.tagName.toLowerCase();
+    const tag = safeGetTagName(cursor);
+    const cursorId = safeGetAttribute(cursor, 'id');
 
-    if (cursor.id) {
-      segments.unshift(`#${cssEscapeSafe(cursor.id)}`);
+    if (cursorId) {
+      segments.unshift(`#${cssEscapeSafe(cursorId)}`);
       break;
     }
 
     let nth = 1;
     let sibling = cursor;
     while ((sibling = sibling.previousElementSibling)) {
-      if (sibling.tagName === cursor.tagName) nth += 1;
+      if (safeGetTagName(sibling) === tag) nth += 1;
     }
 
     segments.unshift(`${tag}:nth-of-type(${nth})`);
@@ -382,16 +480,19 @@ function readComputedStyleMap(element) {
 
 function getAttributesMap(element) {
   const attributes = {};
-  for (const attr of element.attributes) {
-    attributes[attr.name] = attr.value;
+  const names = Element.prototype.getAttributeNames.call(element);
+  for (const name of names) {
+    attributes[name] = Element.prototype.getAttribute.call(element, name);
   }
   return attributes;
 }
 
 function getFriendlySelector(element) {
-  const tag = element.tagName.toLowerCase();
-  const id = element.id ? `#${element.id}` : '';
-  const classes = element.classList.length ? `.${[...element.classList].slice(0, 3).join('.')}` : '';
+  const tag = safeGetTagName(element);
+  const rawId = safeGetAttribute(element, 'id');
+  const id = rawId ? `#${cssEscapeSafe(rawId)}` : '';
+  const clsList = safeGetClassList(element);
+  const classes = clsList.length ? `.${clsList.slice(0, 3).join('.')}` : '';
   return `${tag}${id}${classes}`;
 }
 
@@ -402,16 +503,16 @@ function snapshotElement(element) {
 
   return {
     id: `removed-${Date.now()}-${++removeCounter}`,
-    tagName: element.tagName.toLowerCase(),
+    tagName: safeGetTagName(element),
     selector: getFriendlySelector(element),
     domPath: getNodePath(element),
     parentPath: getNodePath(parent),
     nextSiblingPath: getNodePath(nextSibling),
-    classes: [...element.classList],
+    classes: safeGetClassList(element),
     textPreview: (element.innerText || element.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 240),
     attributes: getAttributesMap(element),
-    dataset: { ...element.dataset },
-    inlineStyle: element.getAttribute('style') || '',
+    dataset: Object.fromEntries(Element.prototype.getAttributeNames.call(element).filter(n => n.startsWith('data-')).map(n => [n.slice(5), Element.prototype.getAttribute.call(element, n)])),
+    inlineStyle: Element.prototype.getAttribute.call(element, 'style') || '',
     computedStyle: readComputedStyleMap(element),
     box: {
       top: rect.top,
@@ -429,7 +530,27 @@ function snapshotElement(element) {
 function reviveElementFromHTML(outerHTML) {
   const template = document.createElement('template');
   template.innerHTML = outerHTML.trim();
-  return template.content.firstElementChild;
+  const node = template.content.firstElementChild;
+  if (node) {
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT);
+    let current = walker.currentNode;
+    while (current) {
+      if (safeGetTagName(current) === 'script') {
+        const toRemove = current;
+        current = walker.nextNode();
+        toRemove.remove();
+        continue;
+      }
+      const attrs = Element.prototype.getAttributeNames.call(current);
+      for (const attr of attrs) {
+        if (attr.toLowerCase().startsWith('on')) {
+          Element.prototype.removeAttribute.call(current, attr);
+        }
+      }
+      current = walker.nextNode();
+    }
+  }
+  return node;
 }
 
 function removeElement(element) {
@@ -442,6 +563,7 @@ function removeElement(element) {
 
   REMOVED_NODE_MAP.set(payload.id, element);
   PLACEHOLDER_MAP.set(payload.id, placeholder);
+  enforceMapSizeLimit();
 
   element.replaceWith(placeholder);
 
@@ -531,6 +653,10 @@ function startPickMode() {
   pickMode = true;
   document.documentElement.classList.add(PICK_MODE_CLASS);
   ensureCaptureShield().style.display = 'block';
+  document.addEventListener('keydown', onKeyDown, true);
+  window.addEventListener('pagehide', clearTransientState);
+  window.addEventListener('scroll', onViewportChange, true);
+  window.addEventListener('resize', onViewportChange, true);
 }
 
 function stopPickMode() {
@@ -543,6 +669,10 @@ function stopPickMode() {
   if (shield) {
     shield.style.display = 'none';
   }
+  document.removeEventListener('keydown', onKeyDown, true);
+  window.removeEventListener('pagehide', clearTransientState);
+  window.removeEventListener('scroll', onViewportChange, true);
+  window.removeEventListener('resize', onViewportChange, true);
 }
 
 function updateHoverFromPoint(clientX, clientY) {
@@ -559,10 +689,23 @@ function updateHoverFromPoint(clientX, clientY) {
   showOverlayForElement(target);
 }
 
+let pointerRafPending = false;
+let lastPointerX = 0;
+let lastPointerY = 0;
+
 function onShieldPointerMove(event) {
   if (!pickMode) return;
   swallowEvent(event);
-  updateHoverFromPoint(event.clientX, event.clientY);
+  lastPointerX = event.clientX;
+  lastPointerY = event.clientY;
+
+  if (!pointerRafPending) {
+    pointerRafPending = true;
+    requestAnimationFrame(() => {
+      pointerRafPending = false;
+      updateHoverFromPoint(lastPointerX, lastPointerY);
+    });
+  }
 }
 
 function onShieldClick(event) {
@@ -612,6 +755,10 @@ function clearTransientState() {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   try {
     switch (message?.type) {
+      case 'PING_CONTENT_SCRIPT':
+        sendResponse({ ok: true });
+        break;
+
       case 'START_PICK_MODE':
         startPickMode();
         sendResponse({ ok: true });

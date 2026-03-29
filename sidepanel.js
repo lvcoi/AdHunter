@@ -477,20 +477,71 @@ function updateCustomPreview() {
     customPreview.style.webkitMask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
     customPreview.style.webkitMaskComposite = 'xor';
     customPreview.style.maskComposite = 'exclude';
-  } else if (animation === 'marching-ants') {
+    } else if (animation.startsWith('level-')) {
+    const level = parseInt(animation.split('-')[1]);
+    const color1 = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
+    const color2 = gradientStops.length > 1 ? hexToRgba(gradientStops[1].color, gradientStops[1].opacity) : color1;
+    
     customPreview.style.background = 'transparent';
-    const c1 = gradientStops[0].color;
-    customPreview.style.backgroundImage = `
-      linear-gradient(90deg, ${c1} 50%, transparent 50%),
-      linear-gradient(90deg, ${c1} 50%, transparent 50%),
-      linear-gradient(0deg, ${c1} 50%, transparent 50%),
-      linear-gradient(0deg, ${c1} 50%, transparent 50%)
-    `;
-    customPreview.style.backgroundRepeat = 'repeat-x, repeat-x, repeat-y, repeat-y';
-    customPreview.style.backgroundSize = `20px ${thickness}px, 20px ${thickness}px, ${thickness}px 20px, ${thickness}px 20px`;
-    customPreview.style.backgroundPosition = `0 0, 0 100%, 0 0, 100% 0`;
-    customPreview.style.animation = `preview-marching ${speed}s linear infinite`;
-    customPreview.style.opacity = gradientStops[0].opacity;
+    customPreview.style.border = 'none';
+    customPreview.style.boxShadow = 'none';
+    customPreview.style.webkitMask = 'none';
+    customPreview.style.mask = 'none';
+    customPreview.style.padding = '0';
+    customPreview.style.backgroundImage = 'none';
+
+    switch (level) {
+      case 1:
+        customPreview.style.background = `linear-gradient(270deg, ${color1}, ${color2})`;
+        customPreview.style.backgroundSize = '400% 400%';
+        customPreview.style.animation = `preview-bg-move ${speed}s ease infinite`;
+        break;
+      case 2:
+        customPreview.style.background = `repeating-linear-gradient(45deg, ${color1}, ${color1} 10px, ${color2} 10px, ${color2} 20px)`;
+        customPreview.style.backgroundSize = '200% 200%';
+        customPreview.style.animation = `preview-diagonal ${speed}s linear infinite`;
+        break;
+      case 3:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.animation = `preview-breathe ${speed}s ease-in-out infinite alternate`;
+        break;
+      case 4:
+        customPreview.style.padding = `${thickness}px`;
+        customPreview.style.background = `conic-gradient(from var(--preview-angle), ${color1}, ${color2}, ${color1})`;
+        customPreview.style.webkitMask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
+        customPreview.style.webkitMaskComposite = 'xor';
+        customPreview.style.maskComposite = 'exclude';
+        customPreview.style.animation = `preview-radar ${speed}s linear infinite`;
+        break;
+      case 5:
+        customPreview.style.border = `${thickness}px dashed ${color1}`;
+        customPreview.style.animation = `preview-breathe ${speed}s linear infinite`;
+        break;
+      case 6:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.setProperty('--pulse-color', color1);
+        customPreview.style.setProperty('--pulse-color-alt', color2);
+        customPreview.style.animation = `preview-double-pulse ${speed}s ease-out infinite`;
+        break;
+      case 7:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.setProperty('--pulse-color', color1);
+        customPreview.style.animation = `preview-flicker ${speed}s infinite`;
+        break;
+      case 8:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.animation = `preview-glitch ${speed}s linear infinite`;
+        break;
+      case 9:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.setProperty('--pulse-color', color1);
+        customPreview.style.animation = `preview-ripple ${speed}s ease-out infinite`;
+        break;
+      case 10:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.animation = `preview-chaos ${speed}s infinite`;
+        break;
+    }
   } else if (animation === 'pulsing') {
     const color1 = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
     const color2 = gradientStops.length > 1 ? hexToRgba(gradientStops[1].color, gradientStops[1].opacity) : color1;
