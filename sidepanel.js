@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'removedElementsByTab';
+
 
 const pickButton = document.getElementById('pickButton');
 const stopButton = document.getElementById('stopButton');
@@ -25,6 +25,19 @@ async function getActiveTab() {
   return tabs[0] || null;
 }
 
+async function ensureContentScriptInjected(tabId) {
+  try {
+    const res = await chrome.tabs.sendMessage(tabId, { type: 'PING_CONTENT_SCRIPT' });
+    if (res?.ok) return;
+  } catch (_) {
+    // Content script not loaded — inject it
+  }
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content.js']
+  });
+}
+
 async function sendToActiveTab(message) {
   const tab = await getActiveTab();
   if (!tab?.id) {
@@ -32,6 +45,7 @@ async function sendToActiveTab(message) {
   }
   activeTabId = tab.id;
   activeTabUrl = tab.url || '';
+  await ensureContentScriptInjected(tab.id);
   return chrome.tabs.sendMessage(tab.id, message);
 }
 
@@ -322,7 +336,7 @@ highlightStyleSelect.addEventListener('change', async () => {
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes[STORAGE_KEY]) {
+  if (areaName === 'session' && Object.keys(changes).some(k => k.startsWith('removed_'))) {
     refresh().catch(console.error);
   }
 });
@@ -357,11 +371,12 @@ const gradientBar = document.getElementById('gradientBar');
 const gradientMarkers = document.getElementById('gradientMarkers');
 const removeMarkerBtn = document.getElementById('removeMarkerBtn');
 
-function hexToRgba(hex, opacity) {
-  const r = parseInt(hex.slice(1, 3), 16) || 0;
-  const g = parseInt(hex.slice(3, 5), 16) || 0;
-  const b = parseInt(hex.slice(5, 7), 16) || 0;
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+function hexToRgba(colorStr, opacity) {
+  const parsed = parseColorStr(colorStr);
+  if (!parsed) return `rgba(0, 0, 0, ${opacity !== undefined ? opacity : 1})`;
+  const explicitAlpha = (opacity !== undefined && opacity !== null) ? opacity : 1;
+  const finalAlpha = parsed.a !== 1 ? parsed.a : explicitAlpha;
+  return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${finalAlpha})`;
 }
 
 function renderGradientBar() {
@@ -476,20 +491,71 @@ function updateCustomPreview() {
     customPreview.style.webkitMask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
     customPreview.style.webkitMaskComposite = 'xor';
     customPreview.style.maskComposite = 'exclude';
-  } else if (animation === 'marching-ants') {
+    } else if (animation.startsWith('level-')) {
+    const level = parseInt(animation.split('-')[1]);
+    const color1 = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
+    const color2 = gradientStops.length > 1 ? hexToRgba(gradientStops[1].color, gradientStops[1].opacity) : color1;
+    
     customPreview.style.background = 'transparent';
-    const c1 = gradientStops[0].color;
-    customPreview.style.backgroundImage = `
-      linear-gradient(90deg, ${c1} 50%, transparent 50%),
-      linear-gradient(90deg, ${c1} 50%, transparent 50%),
-      linear-gradient(0deg, ${c1} 50%, transparent 50%),
-      linear-gradient(0deg, ${c1} 50%, transparent 50%)
-    `;
-    customPreview.style.backgroundRepeat = 'repeat-x, repeat-x, repeat-y, repeat-y';
-    customPreview.style.backgroundSize = `20px ${thickness}px, 20px ${thickness}px, ${thickness}px 20px, ${thickness}px 20px`;
-    customPreview.style.backgroundPosition = `0 0, 0 100%, 0 0, 100% 0`;
-    customPreview.style.animation = `preview-marching ${speed}s linear infinite`;
-    customPreview.style.opacity = gradientStops[0].opacity;
+    customPreview.style.border = 'none';
+    customPreview.style.boxShadow = 'none';
+    customPreview.style.webkitMask = 'none';
+    customPreview.style.mask = 'none';
+    customPreview.style.padding = '0';
+    customPreview.style.backgroundImage = 'none';
+
+    switch (level) {
+      case 1:
+        customPreview.style.background = `linear-gradient(270deg, ${color1}, ${color2})`;
+        customPreview.style.backgroundSize = '400% 400%';
+        customPreview.style.animation = `preview-bg-move ${speed}s ease infinite`;
+        break;
+      case 2:
+        customPreview.style.background = `repeating-linear-gradient(45deg, ${color1}, ${color1} 10px, ${color2} 10px, ${color2} 20px)`;
+        customPreview.style.backgroundSize = '200% 200%';
+        customPreview.style.animation = `preview-diagonal ${speed}s linear infinite`;
+        break;
+      case 3:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.animation = `preview-breathe ${speed}s ease-in-out infinite alternate`;
+        break;
+      case 4:
+        customPreview.style.padding = `${thickness}px`;
+        customPreview.style.background = `conic-gradient(from var(--preview-angle), ${color1}, ${color2}, ${color1})`;
+        customPreview.style.webkitMask = 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)';
+        customPreview.style.webkitMaskComposite = 'xor';
+        customPreview.style.maskComposite = 'exclude';
+        customPreview.style.animation = `preview-radar ${speed}s linear infinite`;
+        break;
+      case 5:
+        customPreview.style.border = `${thickness}px dashed ${color1}`;
+        customPreview.style.animation = `preview-breathe ${speed}s linear infinite`;
+        break;
+      case 6:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.setProperty('--pulse-color', color1);
+        customPreview.style.setProperty('--pulse-color-alt', color2);
+        customPreview.style.animation = `preview-double-pulse ${speed}s ease-out infinite`;
+        break;
+      case 7:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.setProperty('--pulse-color', color1);
+        customPreview.style.animation = `preview-flicker ${speed}s infinite`;
+        break;
+      case 8:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.animation = `preview-glitch ${speed}s linear infinite`;
+        break;
+      case 9:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.setProperty('--pulse-color', color1);
+        customPreview.style.animation = `preview-ripple ${speed}s ease-out infinite`;
+        break;
+      case 10:
+        customPreview.style.border = `${thickness}px solid ${color1}`;
+        customPreview.style.animation = `preview-chaos ${speed}s infinite`;
+        break;
+    }
   } else if (animation === 'pulsing') {
     const color1 = hexToRgba(gradientStops[0].color, gradientStops[0].opacity);
     const color2 = gradientStops.length > 1 ? hexToRgba(gradientStops[1].color, gradientStops[1].opacity) : color1;
@@ -563,6 +629,9 @@ chrome.storage.sync.get({
   }
   renderGradientBar();
   updateCustomPreview();
+  if (gradientStops && gradientStops.length > 0) {
+    openColorPicker(0);
+  }
 });
 
 // Advanced Color Palette Logic
@@ -579,16 +648,59 @@ const cpBNum = document.getElementById('cpBNum');
 const cpA = document.getElementById('cpA');
 const cpANum = document.getElementById('cpANum');
 
-function hexToRgbVals(hex) {
-  if (!hex) return { r: 0, g: 0, b: 0 };
-  if (hex.length === 4) {
-    hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+function parseColorStr(val) {
+  if (!val) return null;
+  val = val.trim();
+  let r = 0, g = 0, b = 0, a = 1;
+
+  // Try parsing rgba() or rgb() with numbers or percentages, supporting both comma and space separators (e.g. rgb(255 0 0 / 0.5))
+  const rgbaMatch = val.match(/rgba?\s*\(\s*([\d.]+%?)(?:\s*,\s*|\s+)([\d.]+%?)(?:\s*,\s*|\s+)([\d.]+%?)(?:(?:\s*,\s*|\s*\/\s*)([\d.]+%?))?\s*\)/i);
+  if (rgbaMatch) {
+    const parseChannel = (str) => str.endsWith('%') ? Math.round(parseFloat(str) * 2.55) : parseInt(str, 10);
+    r = Math.min(255, Math.max(0, parseChannel(rgbaMatch[1])));
+    g = Math.min(255, Math.max(0, parseChannel(rgbaMatch[2])));
+    b = Math.min(255, Math.max(0, parseChannel(rgbaMatch[3])));
+    if (rgbaMatch[4] !== undefined) {
+      const alphaStr = rgbaMatch[4];
+      a = alphaStr.endsWith('%') ? parseFloat(alphaStr) / 100 : parseFloat(alphaStr);
+      a = Math.min(1, Math.max(0, a));
+    }
+    return { r, g, b, a };
   }
-  const r = parseInt(hex.slice(1, 3), 16) || 0;
-  const g = parseInt(hex.slice(3, 5), 16) || 0;
-  const b = parseInt(hex.slice(5, 7), 16) || 0;
-  return { r, g, b };
+
+  // Handle Hex
+  if (!val.startsWith('#') && /^[0-9A-Fa-f]{3,8}$/.test(val)) {
+    val = '#' + val;
+  }
+  
+  if (/^#[0-9A-Fa-f]{3}$/i.test(val)) {
+    r = parseInt(val[1] + val[1], 16);
+    g = parseInt(val[2] + val[2], 16);
+    b = parseInt(val[3] + val[3], 16);
+    return { r, g, b, a: 1 };
+  } else if (/^#[0-9A-Fa-f]{4}$/i.test(val)) {
+    r = parseInt(val[1] + val[1], 16);
+    g = parseInt(val[2] + val[2], 16);
+    b = parseInt(val[3] + val[3], 16);
+    a = parseInt(val[4] + val[4], 16) / 255;
+    return { r, g, b, a: Number(a.toFixed(2)) };
+  } else if (/^#[0-9A-Fa-f]{6}$/i.test(val)) {
+    r = parseInt(val.slice(1, 3), 16);
+    g = parseInt(val.slice(3, 5), 16);
+    b = parseInt(val.slice(5, 7), 16);
+    return { r, g, b, a: 1 };
+  } else if (/^#[0-9A-Fa-f]{8}$/i.test(val)) {
+    r = parseInt(val.slice(1, 3), 16);
+    g = parseInt(val.slice(3, 5), 16);
+    b = parseInt(val.slice(5, 7), 16);
+    a = parseInt(val.slice(7, 9), 16) / 255;
+    return { r, g, b, a: Number(a.toFixed(2)) };
+  }
+
+  return null;
 }
+
+
 
 function rgbToHexStr(r, g, b) {
   return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -599,16 +711,21 @@ function openColorPicker(index) {
   const stop = gradientStops[index];
   if (!stop) return;
   
-  const {r, g, b} = hexToRgbVals(stop.color);
-  const a = parseFloat(stop.opacity || '1');
+  let parsed = parseColorStr(stop.color);
+  if (!parsed) parsed = { r: 0, g: 0, b: 0, a: 1 };
+  
+  const r = parsed.r;
+  const g = parsed.g;
+  const b = parsed.b;
+  const a = parsed.a !== 1 ? parsed.a : (stop.opacity !== undefined ? parseFloat(stop.opacity) : 1);
   
   cpR.value = cpRNum.value = r;
   cpG.value = cpGNum.value = g;
   cpB.value = cpBNum.value = b;
   cpA.value = cpANum.value = a;
-  cpHexInput.value = stop.color;
   
-  updateColorPickerUI(false);
+  if (cpHexInput) cpHexInput.value = stop.color;
+  updateColorPickerUI(false, 'hex');
   if (advancedColorPicker) advancedColorPicker.style.display = 'flex';
 }
 
@@ -618,22 +735,40 @@ function closeColorPicker() {
   renderGradientBar();
 }
 
-function updateColorPickerUI(propagate = true) {
-  let r = parseInt(cpR.value) || 0;
-  let g = parseInt(cpG.value) || 0;
-  let b = parseInt(cpB.value) || 0;
-  let a = parseFloat(cpA.value);
+function updateColorPickerUI(propagate = true, source = null) {
+  let r = parseInt(cpRNum.value);
+  if (isNaN(r)) r = 0;
+  let g = parseInt(cpGNum.value);
+  if (isNaN(g)) g = 0;
+  let b = parseInt(cpBNum.value);
+  if (isNaN(b)) b = 0;
+  let a = parseFloat(cpANum.value);
   if (isNaN(a)) a = 1;
   
   const hex = rgbToHexStr(r, g, b);
-  cpHexInput.value = hex;
-  cpCurrentColor.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
   
-  if (propagate && activeMarkerIndex !== -1 && gradientStops[activeMarkerIndex]) {
-    gradientStops[activeMarkerIndex].color = hex;
-    gradientStops[activeMarkerIndex].opacity = a;
-    renderGradientBar();
-    updateCustomPreview();
+  if (source !== 'hex') {
+    if (a === 1) {
+      cpHexInput.value = hex;
+    } else {
+      cpHexInput.value = `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+  }
+  
+  cpCurrentColor.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+  const btn = document.getElementById('buttonPreview');
+  if (btn) btn.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+  
+  if (propagate) {
+    if (activeMarkerIndex === -1 && gradientStops.length > 0) {
+      activeMarkerIndex = 0;
+    }
+    if (activeMarkerIndex !== -1 && gradientStops[activeMarkerIndex]) {
+      gradientStops[activeMarkerIndex].color = source === 'hex' ? cpHexInput.value : (a === 1 ? hex : `rgba(${r}, ${g}, ${b}, ${a})`);
+      gradientStops[activeMarkerIndex].opacity = a;
+      renderGradientBar();
+      updateCustomPreview();
+    }
   }
 }
 
@@ -641,27 +776,30 @@ if (cpClose) cpClose.addEventListener('click', closeColorPicker);
 
 [cpR, cpRNum, cpG, cpGNum, cpB, cpBNum, cpA, cpANum].forEach(input => {
   if (input) {
-    input.addEventListener('input', (e) => {
-      if (e.target.type === 'range') {
-        document.getElementById(e.target.id + 'Num').value = e.target.value;
-      } else {
-        document.getElementById(e.target.id.replace('Num', '')).value = e.target.value;
-      }
-      updateColorPickerUI(true);
+    ['input', 'change'].forEach(evt => {
+      input.addEventListener(evt, (e) => {
+        if (e.target.type === 'range') {
+          document.getElementById(e.target.id + 'Num').value = e.target.value;
+        } else {
+          document.getElementById(e.target.id.replace('Num', '')).value = e.target.value;
+        }
+        updateColorPickerUI(true, 'slider');
+      });
     });
   }
 });
 
 if (cpHexInput) {
-  cpHexInput.addEventListener('change', (e) => {
-    let val = e.target.value;
-    if (!val.startsWith('#')) val = '#' + val;
-    if (/^#[0-9A-Fa-f]{6}$/i.test(val)) {
-      const {r, g, b} = hexToRgbVals(val);
-      cpR.value = cpRNum.value = r;
-      cpG.value = cpGNum.value = g;
-      cpB.value = cpBNum.value = b;
-      updateColorPickerUI(true);
-    }
+  ['input', 'change'].forEach(evt => {
+    cpHexInput.addEventListener(evt, (e) => {
+      const parsed = parseColorStr(e.target.value);
+      if (parsed) {
+        cpR.value = cpRNum.value = parsed.r;
+        cpG.value = cpGNum.value = parsed.g;
+        cpB.value = cpBNum.value = parsed.b;
+        cpA.value = cpANum.value = parsed.a;
+        updateColorPickerUI(true, 'hex');
+      }
+    });
   });
 }

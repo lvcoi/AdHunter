@@ -83,33 +83,33 @@
             <div class="subtle compact" style="font-size: 11px;">Click bar to add color. Drag markers to adjust.</div>
           </div>
 
-          <div id="advancedColorPicker" class="color-picker-panel" style="display: none;">
+          <div id="advancedColorPicker" class="color-picker-panel">
             <div class="cp-header">
               <span id="cpTitle">Advanced Color Palette</span>
               <button type="button" id="cpClose" class="icon-button">&times;</button>
             </div>
             <div class="cp-preview-area">
               <div id="cpCurrentColor" class="cp-current-color"></div>
-              <input type="text" id="cpHexInput" class="cp-hex-input" />
+              <input type="text" id="cpHexInput" class="cp-hex-input" aria-label="Hex or RGBA color" />
             </div>
             <div class="cp-sliders">
               <div class="cp-slider-group">
-                <label>R</label>
+                <label for="cpRNum">Red</label>
                 <input type="range" id="cpR" min="0" max="255" value="255" />
                 <input type="number" id="cpRNum" min="0" max="255" value="255" />
               </div>
               <div class="cp-slider-group">
-                <label>G</label>
+                <label for="cpGNum">Green</label>
                 <input type="range" id="cpG" min="0" max="255" value="0" />
                 <input type="number" id="cpGNum" min="0" max="255" value="0" />
               </div>
               <div class="cp-slider-group">
-                <label>B</label>
+                <label for="cpBNum">Blue</label>
                 <input type="range" id="cpB" min="0" max="255" value="0" />
                 <input type="number" id="cpBNum" min="0" max="255" value="0" />
               </div>
               <div class="cp-slider-group">
-                <label>A</label>
+                <label for="cpANum">Alpha (transparency)</label>
                 <input type="range" id="cpA" min="0" max="1" step="0.01" value="1" />
                 <input type="number" id="cpANum" min="0" max="1" step="0.01" value="1" />
               </div>
@@ -120,7 +120,16 @@
             <label for="customAnimation">Animation</label>
             <select id="customAnimation" class="style-select">
               <option value="gradient">Gradient</option>
-              <option value="marching-ants">Marching Ants</option>
+              <option value="level-1">Level 1: Background Move</option>
+              <option value="level-2">Level 2: Diagonal Slide</option>
+              <option value="level-3">Level 3: Breathe</option>
+              <option value="level-4">Level 4: Radar Sweep</option>
+              <option value="level-5">Level 5: Dashed Chase</option>
+              <option value="level-6">Level 6: Double Pulse</option>
+              <option value="level-7">Level 7: Neon Flicker</option>
+              <option value="level-8">Level 8: Glitch</option>
+              <option value="level-9">Level 9: Ripple</option>
+              <option value="level-10">Level 10: Chaos</option>
               <option value="pulsing">Pulsing/Glowing</option>
             </select>
           </div>
@@ -131,10 +140,10 @@
           </div>
 
           <div class="preview-container">
-            <div class="preview-box">
+            <button type="button" class="preview-box" id="buttonPreview">
               <div id="customPreview"></div>
               <span>Preview</span>
-            </div>
+            </button>
           </div>
 
           <div class="control-group">

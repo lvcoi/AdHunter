@@ -1,4 +1,14 @@
 .claude
-.melliza/
+.melliza
 .env
-m
+melliza
+.gemini/
+.gemini-kit/
+patch_*
+plan*
+rewrite*
+test_*
+GEMINI.md
+generate*
+AdHunter/
+patch.py
