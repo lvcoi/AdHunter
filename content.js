@@ -129,6 +129,128 @@ function injectStyles() {
       background: rgba(50, 215, 75, 0.1);
     }
 
+    #${OVERLAY_ID}[data-style="core-spin"] {
+      --element-vault-angle: 0deg;
+      padding: 3px;
+      background: conic-gradient(from var(--element-vault-angle), #c084fc 0%, #3b82f6 50%, #c084fc 100%);
+      animation: element-vault-spin 3s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.9;
+    }
+
+    #${OVERLAY_ID}[data-style="stealth-beam"] {
+      --element-vault-angle: 0deg;
+      padding: 2px;
+      background: conic-gradient(from var(--element-vault-angle), transparent 0%, transparent 70%, #38bdf8 100%);
+      animation: element-vault-spin 4s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    }
+
+    #${OVERLAY_ID}[data-style="fluid-morph"] {
+      padding: 3px;
+      background: linear-gradient(90deg, rgba(20,184,166,0.8), rgba(99,102,241,0.8), rgba(168,85,247,0.8));
+      background-size: 200% 200%;
+      animation: element-vault-bg-move 4s ease infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+
+    @keyframes element-vault-shimmer {
+      from { background-position: 200% center; }
+      to { background-position: -200% center; }
+    }
+
+    #${OVERLAY_ID}[data-style="metallic-shimmer"] {
+      padding: 2px;
+      background: linear-gradient(110deg, transparent 45%, rgba(255,255,255,0.8) 50%, transparent 55%);
+      background-size: 200% 100%;
+      animation: element-vault-shimmer 2.5s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    @keyframes element-vault-breathe-glass {
+      0%, 100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+      50% { border-color: rgba(255, 255, 255, 0.6); box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+    }
+
+    #${OVERLAY_ID}[data-style="breathing-glass"] {
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.3);
+      backdrop-filter: blur(8px);
+      animation: element-vault-breathe-glass 3s ease-in-out infinite;
+    }
+
+    @keyframes element-vault-pulse-ring {
+      0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+      50% { transform: scale(1.02); box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+      100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+    }
+
+    #${OVERLAY_ID}[data-style="sonar-pulse"] {
+      border: 3px solid rgba(99, 102, 241, 0.5);
+      animation: element-vault-pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    #${OVERLAY_ID}[data-style="dual-orbit"] {
+      padding: 3px;
+      --element-vault-angle: 0deg;
+      background: conic-gradient(from var(--element-vault-angle), transparent 0%, transparent 40%, #818cf8 50%, transparent 60%),
+                  conic-gradient(from calc(var(--element-vault-angle) + 180deg), transparent 0%, transparent 40%, #34d399 50%, transparent 60%);
+      animation: element-vault-spin 2s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+
+    @keyframes element-vault-sweep {
+      0% { background-position: 200% center; }
+      100% { background-position: -200% center; }
+    }
+    
+    #${OVERLAY_ID}[data-style="edge-sweep"] {
+      padding: 2px;
+      background: linear-gradient(90deg, transparent, #22d3ee, transparent);
+      background-size: 200% 100%;
+      animation: element-vault-sweep 2s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      border: 1px solid rgba(34, 211, 238, 0.3);
+    }
+
+    @keyframes element-vault-aurora {
+      0% { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
+    }
+    
+    #${OVERLAY_ID}[data-style="aurora-bleed"] {
+      padding: 2px;
+      background: linear-gradient(to bottom right, rgba(244,63,94,0.8), rgba(168,85,247,0.8), rgba(99,102,241,0.8));
+      animation: element-vault-aurora 4s linear infinite;
+      box-shadow: 0 0 25px rgba(168,85,247,0.6);
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    #${OVERLAY_ID}[data-style="hover-reveal"] {
+      padding: 4px;
+      background: conic-gradient(from var(--element-vault-angle), transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%);
+      animation: element-vault-spin 3s linear infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      mix-blend-mode: overlay;
+      box-shadow: 0 0 15px rgba(52,211,153,0.6);
+    }
+
     html.__element-vault-pick-mode__,
     html.__element-vault-pick-mode__ * {
       cursor: crosshair !important;
@@ -315,7 +437,7 @@ function updateCustomStyleRule() {
 }
 
 // Read initial style
-chrome.storage.sync.get({ activeHighlightStyle: 'rainbow', customStyleConfig: null }, (data) => {
+chrome.storage.sync.get({ activeHighlightStyle: 'core-spin', customStyleConfig: null }, (data) => {
   activeHighlightStyle = data.activeHighlightStyle;
   customStyleConfig = data.customStyleConfig;
   updateCustomStyleRule();
