@@ -606,7 +606,7 @@ if (saveCustomStyleButton) {
 }
 
 chrome.storage.sync.get({
-  activeHighlightStyle: 'rainbow',
+  activeHighlightStyle: 'core-spin',
   customStyleConfig: null
 }, (data) => {
   if (highlightStyleSelect) {
