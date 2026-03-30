@@ -953,8 +953,19 @@ const trackedAdSlots = new Set();
 let duckAudioCtx = null;
 let duckSlotDetectorInterval = null;
 
-const DUCK_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="40" height="40"><path fill="%23FFD700" d="M6 2h4v2h2v2h2v2h-2v4H2v-2H0V8h2V6h2V4h2V2z"/><rect x="12" y="6" width="4" height="2" fill="%23FF6B00"/><rect x="6" y="4" width="2" height="2" fill="%23000"/></svg>`;
+const CROSSHAIR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="15" y="0" width="2" height="12" fill="%23FF6B00"/><rect x="15" y="20" width="2" height="12" fill="%23FF6B00"/><rect x="0" y="15" width="12" height="2" fill="%23FF6B00"/><rect x="20" y="15" width="12" height="2" fill="%23FF6B00"/><rect x="14" y="14" width="4" height="4" fill="%23808080"/></svg>`;
+
+function getDuckSvg(color) {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="40" height="40"><path fill="${color}" d="M6 2h4v2h2v2h2v2h-2v4H2v-2H0V8h2V6h2V4h2V2z"/><rect x="12" y="6" width="4" height="2" fill="%23FF6B00"/><rect x="6" y="4" width="2" height="2" fill="%23000"/></svg>`;
+}
 const DUCK_FLIP_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="40" height="40"><path fill="%23FF0000" d="M6 2h4v2h2v2h2v2h-2v4H2v-2H0V8h2V6h2V4h2V2z"/><rect x="12" y="6" width="4" height="2" fill="%23FF6B00"/><rect x="6" y="4" width="2" height="2" fill="%23000"/></svg>`;
+
+function getDuckType() {
+  const r = Math.random();
+  if (r > 0.90) return { color: '%23FFD700', points: 1000, speedMultiplier: 2.5, type: 'golden' }; 
+  if (r > 0.65) return { color: '%23FF0000', points: 500, speedMultiplier: 1.8, type: 'red' };
+  return { color: '%23FFFFFF', points: 100, speedMultiplier: 1.0, type: 'white' };
+}
 
 function initDuckAudio() {
   if (!duckAudioCtx) {
@@ -971,34 +982,53 @@ function playGunshot() {
   const osc = duckAudioCtx.createOscillator();
   const gain = duckAudioCtx.createGain();
   osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(150, t);
-  osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.1);
-  gain.gain.setValueAtTime(0.5, t);
-  gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+  osc.frequency.setValueAtTime(100, t);
+  osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.15);
+  gain.gain.setValueAtTime(0.8, t);
+  gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
   osc.connect(gain);
   gain.connect(duckAudioCtx.destination);
   osc.start(t);
-  osc.stop(t + 0.1);
+  osc.stop(t + 0.15);
 }
 
-function playQuack() {
+function playHit() {
   if (!duckHuntSound || !duckAudioCtx) return;
   const t = duckAudioCtx.currentTime;
   const osc = duckAudioCtx.createOscillator();
   const gain = duckAudioCtx.createGain();
   osc.type = 'square';
-  osc.frequency.setValueAtTime(400, t);
-  osc.frequency.exponentialRampToValueAtTime(200, t + 0.2);
+  osc.frequency.setValueAtTime(880, t); 
+  osc.frequency.setValueAtTime(1318, t + 0.05);
   gain.gain.setValueAtTime(0.3, t);
-  gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+  gain.gain.linearRampToValueAtTime(0, t + 0.15);
   osc.connect(gain);
   gain.connect(duckAudioCtx.destination);
   osc.start(t);
-  osc.stop(t + 0.2);
+  osc.stop(t + 0.15);
 }
 
-function sendScoreUpdate(action) {
-  chrome.runtime.sendMessage({ type: 'UPDATE_DUCK_SCORE', action }).catch(() => {});
+function playStartFanfare() {
+  if (!duckHuntSound || !duckAudioCtx) return;
+  const t = duckAudioCtx.currentTime;
+  const osc = duckAudioCtx.createOscillator();
+  const gain = duckAudioCtx.createGain();
+  osc.type = 'square';
+  const notes = [440, 554, 659, 880];
+  notes.forEach((freq, i) => {
+    osc.frequency.setValueAtTime(freq, t + i * 0.15);
+  });
+  gain.gain.setValueAtTime(0.3, t);
+  gain.gain.setValueAtTime(0.3, t + 0.6);
+  gain.gain.linearRampToValueAtTime(0, t + 0.8);
+  osc.connect(gain);
+  gain.connect(duckAudioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.8);
+}
+
+function sendScoreUpdate(action, points = 0) {
+  chrome.runtime.sendMessage({ type: 'UPDATE_DUCK_SCORE', action, points }).catch(() => {});
 }
 
 function spawnDuckInSlot(slotElement) {
@@ -1016,34 +1046,45 @@ function spawnDuckInSlot(slotElement) {
   overlay.style.zIndex = '999999';
   overlay.style.pointerEvents = 'auto';
 
-  // We add pointerEvents auto to catch misses
-  slotElement.parentNode.insertBefore(overlay, slotElement);
+  // Apply Disintegration animation to the ad slot
+  slotElement.classList.add('duckhunt-disintegrate-anim');
+
+  // After disintegration, spawn 2-3 ducks
+  setTimeout(() => {
+    slotElement.style.visibility = 'hidden'; 
+    slotElement.parentNode.insertBefore(overlay, slotElement);
+
+    const numDucks = Math.floor(Math.random() * 2) + 2; // 2 or 3
+    for(let i=0; i<numDucks; i++) {
+      createDuck();
+    }
+  }, 600);
 
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
-      initDuckAudio();
-      playGunshot();
       sendScoreUpdate('miss');
     }
   });
 
   function createDuck() {
     if (!duckHuntEnabled || !overlay.parentNode) return;
+    const duckData = getDuckType();
     const duck = document.createElement('div');
     duck.style.position = 'absolute';
     duck.style.width = '40px';
     duck.style.height = '40px';
-    duck.style.backgroundImage = `url('${DUCK_SVG}')`;
+    duck.style.backgroundImage = `url('${getDuckSvg(duckData.color)}')`;
     duck.style.backgroundSize = 'contain';
     duck.style.backgroundRepeat = 'no-repeat';
     duck.style.pointerEvents = 'auto';
-    duck.style.cursor = 'crosshair';
+    duck.style.cursor = `url('${CROSSHAIR_SVG}') 16 16, crosshair`;
     
     // Random start position
     let x = Math.random() * (rect.width - 40);
     let y = Math.random() * (rect.height - 40);
-    let vx = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 2);
-    let vy = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 2);
+    let baseSpeed = 1 + Math.random() * 2;
+    let vx = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * duckData.speedMultiplier;
+    let vy = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * duckData.speedMultiplier;
     
     duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
     overlay.appendChild(duck);
@@ -1051,15 +1092,14 @@ function spawnDuckInSlot(slotElement) {
     let alive = true;
     let animFrame = null;
 
-    duck.addEventListener('click', (e) => {
+    duck.addEventListener('mousedown', (e) => {
       if (!alive) return;
       alive = false;
       e.preventDefault();
       e.stopPropagation();
       initDuckAudio();
-      playGunshot();
-      playQuack();
-      sendScoreUpdate('kill');
+      setTimeout(playHit, 10); 
+      sendScoreUpdate('kill', duckData.points);
       
       duck.style.backgroundImage = `url('${DUCK_FLIP_SVG}')`;
       duck.style.transform = `translate(${x}px, ${y}px) scaleY(-1)`;
@@ -1113,8 +1153,6 @@ function spawnDuckInSlot(slotElement) {
     }
     animFrame = requestAnimationFrame(animate);
   }
-
-  createDuck();
 }
 
 function detectAdSlots() {
@@ -1123,43 +1161,90 @@ function detectAdSlots() {
   elements.forEach(el => {
     if (trackedAdSlots.has(el)) return;
     const rect = el.getBoundingClientRect();
-    // Check if it's an empty ad slot or blocked iframe
-    if (rect.width >= 100 && rect.height >= 50 && (el.tagName === 'IFRAME' || !el.innerText.trim())) {
+    if (rect.width >= 100 && rect.height >= 50 && (el.tagName === 'IFRAME' || !el.innerText.trim() || el.innerHTML.includes('<img'))) {
       trackedAdSlots.add(el);
       spawnDuckInSlot(el);
     }
   });
 }
 
+function globalClickListener(e) {
+  if (duckHuntEnabled) {
+    initDuckAudio();
+    playGunshot();
+  }
+}
+
 function startDuckHunt() {
   if (duckHuntEnabled) return;
   duckHuntEnabled = true;
   document.documentElement.classList.add('duck-hunt-active');
+  document.addEventListener('mousedown', globalClickListener, true);
+
   if (!document.getElementById('__duckhunt_style__')) {
     const style = document.createElement('style');
     style.id = '__duckhunt_style__';
     style.textContent = `
-      html.duck-hunt-active, html.duck-hunt-active * { cursor: crosshair !important; }
+      html.duck-hunt-active, html.duck-hunt-active * { cursor: url('${CROSSHAIR_SVG}') 16 16, crosshair !important; }
       .__duckhunt_overlay__ { pointer-events: auto !important; }
+      
+      @keyframes duckhunt-flash-text {
+        0% { color: #ff0000; text-shadow: 4px 4px 0 #000; }
+        25% { color: #00ff00; text-shadow: -4px 4px 0 #000; }
+        50% { color: #0000ff; text-shadow: 4px -4px 0 #000; }
+        75% { color: #ffff00; text-shadow: -4px -4px 0 #000; }
+        100% { color: #ff00ff; text-shadow: 4px 4px 0 #000; }
+      }
+      @keyframes duckhunt-disintegrate {
+        0% { filter: brightness(1) blur(0px); transform: scale(1); opacity: 1; }
+        50% { filter: brightness(2) blur(5px); transform: scale(1.1); opacity: 0.8; }
+        100% { filter: brightness(3) blur(20px); transform: scale(0); opacity: 0; }
+      }
+      .duckhunt-disintegrate-anim {
+        animation: duckhunt-disintegrate 0.6s forwards ease-in !important;
+      }
+      .duckhunt-start-banner {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        font-family: Impact, sans-serif;
+        font-size: 100px; font-weight: bold; text-transform: uppercase; letter-spacing: 5px;
+        z-index: 2147483647; pointer-events: none;
+        animation: duckhunt-flash-text 0.1s infinite;
+      }
     `;
     document.head.appendChild(style);
   }
-  duckSlotDetectorInterval = setInterval(detectAdSlots, 2000);
-  detectAdSlots();
+
+  // Play Start Sequence
+  initDuckAudio();
+  playStartFanfare();
+  const banner = document.createElement('div');
+  banner.className = 'duckhunt-start-banner';
+  banner.textContent = 'AW, DUCK!';
+  document.body.appendChild(banner);
+  setTimeout(() => {
+    banner.remove();
+    // Start detecting slots AFTER the sequence
+    duckSlotDetectorInterval = setInterval(detectAdSlots, 2000);
+    detectAdSlots();
+  }, 2000);
 }
 
 function stopDuckHunt() {
   duckHuntEnabled = false;
   document.documentElement.classList.remove('duck-hunt-active');
+  document.removeEventListener('mousedown', globalClickListener, true);
   clearInterval(duckSlotDetectorInterval);
   trackedAdSlots.clear();
   document.querySelectorAll('.__duckhunt_overlay__').forEach(e => e.remove());
+  document.querySelectorAll('.duckhunt-disintegrate-anim').forEach(e => {
+    e.classList.remove('duckhunt-disintegrate-anim');
+    e.style.visibility = 'visible';
+  });
 }
 
 chrome.storage.sync.get(['duckHuntEnabled', 'duckHuntSound'], (res) => {
   duckHuntSound = res.duckHuntSound !== false;
   if (res.duckHuntEnabled) startDuckHunt();
 });
-
 
 } // end re-injection guard

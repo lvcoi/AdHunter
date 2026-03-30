@@ -87,11 +87,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const data = await chrome.storage.session.get(key);
         let score = data[key] || { kills: 0, escapes: 0, shots: 0, accuracy: 0, milestones: [] };
         
-        if (message.action === 'kill') score.kills++;
-        else if (message.action === 'escape') score.escapes++;
+        if (message.action === 'kill') {
+          score.kills++;
+          score.points = (score.points || 0) + (message.points || 100);
+        } else if (message.action === 'escape') {
+          score.escapes++;
+        }
         if (message.action === 'kill' || message.action === 'miss') score.shots++;
-        
-        score.accuracy = score.shots > 0 ? score.kills / score.shots : 0;
         score.lastUpdated = new Date().toISOString();
         
         await chrome.storage.session.set({ [key]: score });

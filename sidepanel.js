@@ -19,7 +19,7 @@ const duckHuntSettingsPanel = document.getElementById('duckHuntSettingsPanel');
 const resetDuckScoreBtn = document.getElementById('resetDuckScoreBtn');
 const duckKills = document.getElementById('duckKills');
 const duckEscapes = document.getElementById('duckEscapes');
-const duckAccuracy = document.getElementById('duckAccuracy');
+const duckPoints = document.getElementById('duckPoints');
 const duckHuntSoundToggle = document.getElementById('duckHuntSoundToggle');
 
 let duckHuntEnabled = false;
@@ -99,13 +99,12 @@ function updateDuckScoreUI(score) {
   if (!score) {
     duckKills.textContent = '0';
     duckEscapes.textContent = '0';
-    duckAccuracy.textContent = '0%';
+    duckPoints.textContent = '0';
     return;
   }
   duckKills.textContent = score.kills || 0;
   duckEscapes.textContent = score.escapes || 0;
-  const acc = score.shots > 0 ? Math.round((score.kills / score.shots) * 100) : 0;
-  duckAccuracy.textContent = `${acc}%`;
+  duckPoints.textContent = score.points || 0;
 }
 
 async function refreshDuckHuntState() {
