@@ -13,17 +13,21 @@ const adBlockToggle = document.getElementById('adBlockToggle');
 const adBlockLabel = document.getElementById('adBlockLabel');
 const highlightStyleSelect = document.getElementById('highlightStyleSelect');
 
-const duckHuntToggle = document.getElementById('duckHuntToggle');
-const duckHuntLabel = document.getElementById('duckHuntLabel');
-const duckHuntSettingsPanel = document.getElementById('duckHuntSettingsPanel');
-const resetDuckScoreBtn = document.getElementById('resetDuckScoreBtn');
-const duckKills = document.getElementById('duckKills');
-const duckEscapes = document.getElementById('duckEscapes');
-const duckPoints = document.getElementById('duckPoints');
-const duckHuntSoundToggle = document.getElementById('duckHuntSoundToggle');
+const duckAdsStartBtn = document.getElementById('duckAdsStartBtn');
+const duckAdsScoreboard = document.getElementById('duckAdsScoreboard');
+const duckAdsCard = document.getElementById('duckAdsCard');
+const duckAdsPoints = document.getElementById('duckAdsPoints');
+const duckAdsKills = document.getElementById('duckAdsKills');
+const duckAdsEscapes = document.getElementById('duckAdsEscapes');
+const duckAdsAccuracy = document.getElementById('duckAdsAccuracy');
+const duckAdsSoundToggle = document.getElementById('duckAdsSoundToggle');
+const duckAdsQuitBtn = document.getElementById('duckAdsQuitBtn');
+const duckAdsHighScoreEl = document.getElementById('duckAdsHighScore');
+const duckAdsHighScoreValue = document.getElementById('duckAdsHighScoreValue');
+const adBlockSection = document.getElementById('adBlockSection');
 
-let duckHuntEnabled = false;
-let duckHuntSound = true;
+let duckAdsActive = false;
+let duckAdsSound = true;
 
 
 let activeTabId = null;
@@ -89,34 +93,58 @@ async function refreshAdBlockState() {
 }
 
 
-function renderDuckHuntToggle() {
-  duckHuntToggle.checked = duckHuntEnabled;
-  duckHuntLabel.textContent = duckHuntEnabled ? 'On' : 'Off';
-  duckHuntSettingsPanel.style.display = duckHuntEnabled ? 'block' : 'none';
+// --- Duck Ads UI ---
+const hiddenDuringGame = [];
+function showDuckAdsScoreboard() {
+  duckAdsActive = true;
+  duckAdsScoreboard.style.display = 'block';
+  duckAdsCard.style.display = 'none';
+  // Hide all other sections except scoreboard
+  document.querySelectorAll('.app-shell > section, .app-shell > main').forEach(el => {
+    if (el !== duckAdsScoreboard && el !== duckAdsCard) {
+      hiddenDuringGame.push(el);
+      el.style.display = 'none';
+    }
+  });
 }
 
-function updateDuckScoreUI(score) {
-  if (!score) {
-    duckKills.textContent = '0';
-    duckEscapes.textContent = '0';
-    duckPoints.textContent = '0';
-    return;
+function hideDuckAdsScoreboard() {
+  duckAdsActive = false;
+  duckAdsScoreboard.style.display = 'none';
+  duckAdsCard.style.display = '';
+  hiddenDuringGame.forEach(el => el.style.display = '');
+  hiddenDuringGame.length = 0;
+}
+
+function updateDuckAdsScoreUI(score) {
+  const kills = score?.kills || 0;
+  const escapes = score?.escapes || 0;
+  const shots = score?.shots || 0;
+  const points = score?.points || 0;
+  const accuracy = shots > 0 ? Math.round((kills / shots) * 100) : 0;
+  duckAdsPoints.textContent = points.toLocaleString();
+  duckAdsKills.textContent = kills;
+  duckAdsEscapes.textContent = escapes;
+  duckAdsAccuracy.textContent = accuracy + '%';
+}
+
+async function loadHighScore() {
+  const data = await chrome.storage.sync.get('duckAdsHighScore');
+  const hs = data.duckAdsHighScore || 0;
+  if (hs > 0) {
+    duckAdsHighScoreEl.style.display = 'block';
+    duckAdsHighScoreValue.textContent = hs.toLocaleString();
   }
-  duckKills.textContent = score.kills || 0;
-  duckEscapes.textContent = score.escapes || 0;
-  duckPoints.textContent = score.points || 0;
 }
 
-async function refreshDuckHuntState() {
-  const settings = await chrome.storage.sync.get(['duckHuntEnabled', 'duckHuntSound']);
-  duckHuntEnabled = Boolean(settings.duckHuntEnabled);
-  duckHuntSound = settings.duckHuntSound !== false; // default true
-  duckHuntSoundToggle.checked = duckHuntSound;
-  renderDuckHuntToggle();
-  
+async function refreshDuckAdsState() {
+  const settings = await chrome.storage.sync.get(['duckAdsSound']);
+  duckAdsSound = settings.duckAdsSound !== false;
+  duckAdsSoundToggle.checked = duckAdsSound;
+  await loadHighScore();
   if (activeTabId) {
     const sessionData = await chrome.storage.session.get(`duckhunt_${activeTabId}`);
-    updateDuckScoreUI(sessionData[`duckhunt_${activeTabId}`]);
+    updateDuckAdsScoreUI(sessionData[`duckhunt_${activeTabId}`]);
   }
 }
 
@@ -157,7 +185,7 @@ async function refreshInner() {
 
   render();
   await refreshAdBlockState();
-  await refreshDuckHuntState();
+  await refreshDuckAdsState();
 }
 
 function render() {
@@ -852,29 +880,42 @@ if (cpHexInput) {
 }
 
 
-duckHuntToggle.addEventListener('change', async () => {
-  duckHuntEnabled = duckHuntToggle.checked;
-  renderDuckHuntToggle();
-  await chrome.storage.sync.set({ duckHuntEnabled });
-  // Tell content script
-  try { await sendToActiveTab({ type: 'DUCK_HUNT_TOGGLED', enabled: duckHuntEnabled }); } catch (e) {}
+duckAdsStartBtn.addEventListener('click', async () => {
+  showDuckAdsScoreboard();
+  try { await sendToActiveTab({ type: 'DUCK_ADS_TOGGLED', enabled: true }); } catch (e) {}
 });
 
-duckHuntSoundToggle.addEventListener('change', async () => {
-  duckHuntSound = duckHuntSoundToggle.checked;
-  await chrome.storage.sync.set({ duckHuntSound });
-  try { await sendToActiveTab({ type: 'DUCK_HUNT_SETTINGS_CHANGED', sound: duckHuntSound }); } catch (e) {}
+duckAdsQuitBtn.addEventListener('click', async () => {
+  // Save high score before quitting
+  if (activeTabId) {
+    const sessionData = await chrome.storage.session.get(`duckhunt_${activeTabId}`);
+    const score = sessionData[`duckhunt_${activeTabId}`];
+    if (score?.points) {
+      const hsData = await chrome.storage.sync.get('duckAdsHighScore');
+      const currentHS = hsData.duckAdsHighScore || 0;
+      if (score.points > currentHS) {
+        await chrome.storage.sync.set({ duckAdsHighScore: score.points });
+      }
+    }
+  }
+  try { await sendToActiveTab({ type: 'DUCK_ADS_TOGGLED', enabled: false, showGameOver: true }); } catch (e) {}
+  hideDuckAdsScoreboard();
+  // Reset session score for next game
+  if (activeTabId) {
+    await chrome.storage.session.remove(`duckhunt_${activeTabId}`);
+  }
+  updateDuckAdsScoreUI(null);
+  await loadHighScore();
 });
 
-resetDuckScoreBtn.addEventListener('click', async () => {
-  if (!activeTabId) return;
-  await chrome.storage.session.remove(`duckhunt_${activeTabId}`);
-  updateDuckScoreUI(null);
-  try { await sendToActiveTab({ type: 'DUCK_HUNT_SCORE_RESET' }); } catch (e) {}
+duckAdsSoundToggle.addEventListener('change', async () => {
+  duckAdsSound = duckAdsSoundToggle.checked;
+  await chrome.storage.sync.set({ duckAdsSound });
+  try { await sendToActiveTab({ type: 'DUCK_ADS_SETTINGS_CHANGED', sound: duckAdsSound }); } catch (e) {}
 });
 
 chrome.storage.session.onChanged.addListener((changes) => {
   if (activeTabId && changes[`duckhunt_${activeTabId}`]) {
-    updateDuckScoreUI(changes[`duckhunt_${activeTabId}`].newValue);
+    updateDuckAdsScoreUI(changes[`duckhunt_${activeTabId}`].newValue);
   }
 });

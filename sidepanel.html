@@ -34,7 +34,48 @@
         </div>
       </section>
 
-      <section class="adblock-row card">
+      <!-- Duck Ads! Card — above ad blocker -->
+      <section class="duckads-card card" id="duckAdsCard">
+        <div>
+          <div class="section-title">🦆 Duck Ads!</div>
+          <div class="subtle compact">Blast ads and hunt ducks in a retro arcade game.</div>
+        </div>
+        <button id="duckAdsStartBtn" class="duckads-start-btn">Start Duck Ads!</button>
+      </section>
+
+      <!-- Duck Ads Scoreboard — shown when game is active, hides other panels -->
+      <section class="duckads-scoreboard card" id="duckAdsScoreboard" style="display: none;">
+        <div class="duckads-scoreboard-header">
+          <div class="section-title" style="color: #FF6B00; font-size: 16px;">🦆 DUCK ADS!</div>
+        </div>
+        <div class="duckads-score-big" id="duckAdsPoints">0</div>
+        <div class="subtle compact" style="text-align: center; margin-top: -4px; margin-bottom: 12px;">SCORE</div>
+        <div class="duckads-stats-grid">
+          <div class="duckads-stat-box">
+            <div class="duckads-stat-value" id="duckAdsKills" style="color: #44ff44;">0</div>
+            <div class="duckads-stat-label">HITS</div>
+          </div>
+          <div class="duckads-stat-box">
+            <div class="duckads-stat-value" id="duckAdsEscapes" style="color: #ff4444;">0</div>
+            <div class="duckads-stat-label">ESCAPES</div>
+          </div>
+          <div class="duckads-stat-box">
+            <div class="duckads-stat-value" id="duckAdsAccuracy" style="color: #44aaff;">0%</div>
+            <div class="duckads-stat-label">ACCURACY</div>
+          </div>
+        </div>
+        <div class="duckads-high-score" id="duckAdsHighScore" style="display: none;">
+          <span style="color: #FFD700;">🏆</span> HIGH SCORE: <span id="duckAdsHighScoreValue">0</span>
+        </div>
+        <div class="duckads-controls">
+          <label class="duckads-sound-label">
+            <input type="checkbox" id="duckAdsSoundToggle" checked /> Sound
+          </label>
+          <button id="duckAdsQuitBtn" class="danger duckads-quit-btn">Quit</button>
+        </div>
+      </section>
+
+      <section class="adblock-row card" id="adBlockSection">
         <div>
           <div class="section-title">Simple ad blocker</div>
           <div class="subtle compact">Blocks requests to doubleclick.net, googlesyndication.com, and googleadservices.com.</div>
@@ -44,46 +85,7 @@
           <span class="switch-track" aria-hidden="true"></span>
           <span id="adBlockLabel" class="switch-label">Loading…</span>
         </label>
-      
-      <section class="duckhunt-row card">
-        <div>
-          <div class="section-title">🦆 Duck Hunt</div>
-          <div class="subtle compact">Turn empty ad slots into a retro arcade game.</div>
-        </div>
-        <label class="switch" for="duckHuntToggle">
-          <input id="duckHuntToggle" type="checkbox" />
-          <span class="switch-track" aria-hidden="true"></span>
-          <span id="duckHuntLabel" class="switch-label">Loading…</span>
-        </label>
       </section>
-      
-      <section class="duckhunt-stats-row card" id="duckHuntSettingsPanel" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 12px;">
-          <div class="label" style="color: #ffaa00;">SCORE</div>
-          <button id="resetDuckScoreBtn" class="danger" style="padding: 4px 8px; font-size: 11px;">Reset</button>
-        </div>
-        <div style="display: flex; gap: 10px; width: 100%; margin-bottom: 12px;">
-          <div style="flex: 1; text-align: center; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;">
-            <div style="font-size: 18px; font-weight: bold; color: #44ff44;" id="duckKills">0</div>
-            <div class="subtle compact" style="font-size: 10px;">HITS</div>
-          </div>
-          <div style="flex: 1; text-align: center; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;">
-            <div style="font-size: 18px; font-weight: bold; color: #ff4444;" id="duckEscapes">0</div>
-            <div class="subtle compact" style="font-size: 10px;">ESCAPES</div>
-          </div>
-          <div style="flex: 1; text-align: center; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;">
-            <div style="font-size: 18px; font-weight: bold; color: #44aaff;" id="duckAccuracy">0%</div>
-            <div class="subtle compact" style="font-size: 10px;">ACCURACY</div>
-          </div>
-        </div>
-        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-          <label style="font-size: 12px; display: flex; align-items: center; gap: 6px;">
-            <input type="checkbox" id="duckHuntSoundToggle" checked /> Sounds
-          </label>
-        </div>
-      </section>
-
-</section>
 
       <section class="highlight-style-row card">
         <div>

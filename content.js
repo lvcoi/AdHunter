@@ -889,14 +889,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
 
       
-      case 'DUCK_HUNT_TOGGLED':
-        if (message.enabled) startDuckHunt();
-        else stopDuckHunt();
+      case 'DUCK_ADS_TOGGLED':
+        if (message.enabled) startDuckAds();
+        else stopDuckAds(message.showGameOver);
         sendResponse({ ok: true });
         break;
 
-      case 'DUCK_HUNT_SETTINGS_CHANGED':
-        if (message.sound !== undefined) duckHuntSound = message.sound;
+      case 'DUCK_ADS_SETTINGS_CHANGED':
+        if (message.sound !== undefined) duckAdsSound = message.sound;
         sendResponse({ ok: true });
         break;
 
@@ -946,9 +946,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 
-// --- DUCK HUNT LOGIC ---
-let duckHuntEnabled = false;
-let duckHuntSound = true;
+// --- DUCK ADS! LOGIC ---
+let duckAdsEnabled = false;
+let duckAdsSound = true;
 const trackedAdSlots = new Set();
 let duckAudioCtx = null;
 let duckSlotDetectorInterval = null;
@@ -958,10 +958,12 @@ let pendingAdQueue = [];
 let activeDuckCount = 0;
 let currentWaveProcessing = false;
 let duckViewportOverlay = null;
+let duckEscapeIndex = 0; // for staggering
 
 const ESCAPE_PHRASES = ["Ha Ha!", "I got away!", "Ads Forever!", "We will rule the World!"];
 
-const CROSSHAIR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="15" y="0" width="2" height="12" fill="%23FF6B00"/><rect x="15" y="20" width="2" height="12" fill="%23FF6B00"/><rect x="0" y="15" width="12" height="2" fill="%23FF6B00"/><rect x="20" y="15" width="12" height="2" fill="%23FF6B00"/><rect x="14" y="14" width="4" height="4" fill="%23808080"/></svg>`;
+// Realistic rifle-optic crosshair SVG
+const CROSSHAIR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="none" stroke="%23FF6B00" stroke-width="1.5" opacity="0.8"/><circle cx="16" cy="16" r="8" fill="none" stroke="%23FF6B00" stroke-width="0.8" opacity="0.5"/><line x1="16" y1="0" x2="16" y2="12" stroke="%23FF6B00" stroke-width="1.2"/><line x1="16" y1="20" x2="16" y2="32" stroke="%23FF6B00" stroke-width="1.2"/><line x1="0" y1="16" x2="12" y2="16" stroke="%23FF6B00" stroke-width="1.2"/><line x1="20" y1="16" x2="32" y2="16" stroke="%23FF6B00" stroke-width="1.2"/><circle cx="16" cy="16" r="1.5" fill="%23FF6B00" opacity="0.6"/><line x1="16" y1="4" x2="16" y2="5.5" stroke="%23FF6B00" stroke-width="0.6"/><line x1="16" y1="26.5" x2="16" y2="28" stroke="%23FF6B00" stroke-width="0.6"/><line x1="4" y1="16" x2="5.5" y2="16" stroke="%23FF6B00" stroke-width="0.6"/><line x1="26.5" y1="16" x2="28" y2="16" stroke="%23FF6B00" stroke-width="0.6"/></svg>`;
 
 function getDuckSvg(color) {
   return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="40" height="40"><path fill="${color}" d="M6 2h4v2h2v2h2v2h-2v4H2v-2H0V8h2V6h2V4h2V2z"/><rect x="12" y="6" width="4" height="2" fill="%23FF6B00"/><rect x="6" y="4" width="2" height="2" fill="%23000"/></svg>`;
@@ -985,23 +987,52 @@ function initDuckAudio() {
 }
 
 function playGunshot() {
-  if (!duckHuntSound || !duckAudioCtx) return;
+  if (!duckAdsSound || !duckAudioCtx) return;
   const t = duckAudioCtx.currentTime;
-  const osc = duckAudioCtx.createOscillator();
-  const gain = duckAudioCtx.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(100, t);
-  osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.15);
-  gain.gain.setValueAtTime(0.8, t);
-  gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-  osc.connect(gain);
-  gain.connect(duckAudioCtx.destination);
-  osc.start(t);
-  osc.stop(t + 0.15);
+  // Layer 1: Low boom
+  const osc1 = duckAudioCtx.createOscillator();
+  const gain1 = duckAudioCtx.createGain();
+  osc1.type = 'sawtooth';
+  osc1.frequency.setValueAtTime(150, t);
+  osc1.frequency.exponentialRampToValueAtTime(0.01, t + 0.2);
+  gain1.gain.setValueAtTime(1.0, t);
+  gain1.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+  osc1.connect(gain1);
+  gain1.connect(duckAudioCtx.destination);
+  osc1.start(t);
+  osc1.stop(t + 0.2);
+  // Layer 2: High crack
+  const osc2 = duckAudioCtx.createOscillator();
+  const gain2 = duckAudioCtx.createGain();
+  osc2.type = 'square';
+  osc2.frequency.setValueAtTime(800, t);
+  osc2.frequency.exponentialRampToValueAtTime(100, t + 0.08);
+  gain2.gain.setValueAtTime(0.4, t);
+  gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+  osc2.connect(gain2);
+  gain2.connect(duckAudioCtx.destination);
+  osc2.start(t);
+  osc2.stop(t + 0.1);
+  // Layer 3: Noise burst via buffer
+  try {
+    const bufferSize = duckAudioCtx.sampleRate * 0.08;
+    const noiseBuffer = duckAudioCtx.createBuffer(1, bufferSize, duckAudioCtx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    const noise = duckAudioCtx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const noiseGain = duckAudioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.6, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+    noise.connect(noiseGain);
+    noiseGain.connect(duckAudioCtx.destination);
+    noise.start(t);
+    noise.stop(t + 0.08);
+  } catch(e) {}
 }
 
 function playHit() {
-  if (!duckHuntSound || !duckAudioCtx) return;
+  if (!duckAdsSound || !duckAudioCtx) return;
   const t = duckAudioCtx.currentTime;
   const osc = duckAudioCtx.createOscillator();
   const gain = duckAudioCtx.createGain();
@@ -1017,7 +1048,7 @@ function playHit() {
 }
 
 function playStartFanfare() {
-  if (!duckHuntSound || !duckAudioCtx) return;
+  if (!duckAdsSound || !duckAudioCtx) return;
   const t = duckAudioCtx.currentTime;
   const osc = duckAudioCtx.createOscillator();
   const gain = duckAudioCtx.createGain();
@@ -1043,10 +1074,9 @@ function sendScoreUpdate(action, points = 0) {
 function ensureDuckViewportOverlay() {
   if (duckViewportOverlay && duckViewportOverlay.parentNode) return duckViewportOverlay;
   duckViewportOverlay = document.createElement('div');
-  duckViewportOverlay.id = '__duckhunt_viewport_overlay__';
+  duckViewportOverlay.id = '__duckads_viewport_overlay__';
   duckViewportOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;pointer-events:none;overflow:visible;';
   document.documentElement.appendChild(duckViewportOverlay);
-  // Click on the viewport overlay background = miss
   duckViewportOverlay.addEventListener('mousedown', (e) => {
     if (e.target === duckViewportOverlay) {
       sendScoreUpdate('miss');
@@ -1059,7 +1089,7 @@ function ensureDuckViewportOverlay() {
 function showPowEffect(screenX, screenY) {
   const vpOverlay = ensureDuckViewportOverlay();
   const pow = document.createElement('div');
-  pow.className = 'duckhunt-pow';
+  pow.className = 'duckads-pow';
   pow.textContent = 'POW!';
   pow.style.left = `${screenX - 50}px`;
   pow.style.top = `${screenY - 50}px`;
@@ -1071,7 +1101,7 @@ function showPowEffect(screenX, screenY) {
 function showScoreFloat(screenX, screenY, points) {
   const vpOverlay = ensureDuckViewportOverlay();
   const floater = document.createElement('div');
-  floater.className = 'duckhunt-score-float';
+  floater.className = 'duckads-score-float';
   floater.textContent = `+${points}`;
   floater.style.left = `${screenX}px`;
   floater.style.top = `${screenY - 20}px`;
@@ -1083,9 +1113,8 @@ function showScoreFloat(screenX, screenY, points) {
 function showEscapeBubble(screenX, screenY) {
   const vpOverlay = ensureDuckViewportOverlay();
   const bubble = document.createElement('div');
-  bubble.className = 'duckhunt-speech-bubble';
+  bubble.className = 'duckads-speech-bubble';
   bubble.textContent = ESCAPE_PHRASES[Math.floor(Math.random() * ESCAPE_PHRASES.length)];
-  // Clamp to viewport
   const bx = Math.min(Math.max(10, screenX - 60), window.innerWidth - 180);
   const by = Math.min(Math.max(10, screenY - 60), window.innerHeight - 60);
   bubble.style.left = `${bx}px`;
@@ -1106,7 +1135,7 @@ function onDuckResolved() {
 
 // --- Sequential ad processing ---
 function processNextAd() {
-  if (currentWaveProcessing || !duckHuntEnabled) return;
+  if (currentWaveProcessing || !duckAdsEnabled) return;
   if (pendingAdQueue.length === 0) return;
   currentWaveProcessing = true;
   const slotElement = pendingAdQueue.shift();
@@ -1122,27 +1151,23 @@ function spawnDuckInSlot(slotElement) {
   }
 
   const vpOverlay = ensureDuckViewportOverlay();
+  slotElement.classList.add('duckads-disintegrate-anim');
 
-  // Apply slower disintegration animation to the ad slot
-  slotElement.classList.add('duckhunt-disintegrate-anim');
-
-  // After disintegration (~2s), spawn 2-3 ducks into the viewport overlay
   setTimeout(() => {
     slotElement.style.visibility = 'hidden';
-
-    const numDucks = Math.floor(Math.random() * 2) + 2; // 2 or 3
+    const numDucks = Math.floor(Math.random() * 2) + 2;
     activeDuckCount += numDucks;
-    // Spawn ducks at the ad's screen position, then they roam freely
+    duckEscapeIndex = 0;
     const spawnCenterX = rect.left + rect.width / 2;
     const spawnCenterY = rect.top + rect.height / 2;
     for (let i = 0; i < numDucks; i++) {
-      createFreeDuck(vpOverlay, spawnCenterX, spawnCenterY);
+      createFreeDuck(vpOverlay, spawnCenterX, spawnCenterY, i);
     }
   }, 2000);
 }
 
-function createFreeDuck(vpOverlay, spawnX, spawnY) {
-  if (!duckHuntEnabled || !vpOverlay.parentNode) { onDuckResolved(); return; }
+function createFreeDuck(vpOverlay, spawnX, spawnY, duckIndex) {
+  if (!duckAdsEnabled || !vpOverlay.parentNode) { onDuckResolved(); return; }
   const duckData = getDuckType();
   const duck = document.createElement('div');
   duck.style.position = 'absolute';
@@ -1155,7 +1180,6 @@ function createFreeDuck(vpOverlay, spawnX, spawnY) {
   duck.style.cursor = `url('${CROSSHAIR_SVG}') 16 16, crosshair`;
   duck.style.zIndex = '1000000';
 
-  // Start near the ad's center with some jitter
   let x = spawnX + (Math.random() - 0.5) * 60 - 20;
   let y = spawnY + (Math.random() - 0.5) * 40 - 20;
   let baseSpeed = 1.5 + Math.random() * 2;
@@ -1166,6 +1190,8 @@ function createFreeDuck(vpOverlay, spawnX, spawnY) {
   vpOverlay.appendChild(duck);
 
   let alive = true;
+  // Stagger escape time: 15s base + 2.5s per duck index
+  const escapeTime = 15000 + (duckIndex * 2500);
 
   duck.addEventListener('mousedown', (e) => {
     if (!alive) return;
@@ -1176,7 +1202,6 @@ function createFreeDuck(vpOverlay, spawnX, spawnY) {
     setTimeout(playHit, 10);
     sendScoreUpdate('kill', duckData.points);
 
-    // Show POW and score float
     showPowEffect(x + 20, y + 20);
     showScoreFloat(x + 20, y - 10, duckData.points);
 
@@ -1200,11 +1225,10 @@ function createFreeDuck(vpOverlay, spawnX, spawnY) {
 
   const startTime = performance.now();
   function animate(time) {
-    if (!alive || !duckHuntEnabled || !duck.parentNode) return;
+    if (!alive || !duckAdsEnabled || !duck.parentNode) return;
     x += vx;
     y += vy;
 
-    // Bounce off viewport edges
     const vw = window.innerWidth - 40;
     const vh = window.innerHeight - 40;
     if (x <= 0 || x >= vw) { vx *= -1; x = Math.max(0, Math.min(x, vw)); }
@@ -1212,14 +1236,12 @@ function createFreeDuck(vpOverlay, spawnX, spawnY) {
 
     duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
 
-    if (time - startTime > 10000) {
+    if (time - startTime > escapeTime) {
       alive = false;
       sendScoreUpdate('escape');
 
-      // Show escape speech bubble
       showEscapeBubble(x + 20, y);
 
-      // Wait for bubble to show, then fly away
       setTimeout(() => {
         let escapeY = y;
         function escapeAnim() {
@@ -1244,7 +1266,7 @@ function createFreeDuck(vpOverlay, spawnX, spawnY) {
 }
 
 function detectAdSlots() {
-  if (!duckHuntEnabled) return;
+  if (!duckAdsEnabled) return;
   const elements = document.querySelectorAll('iframe, div[class*="ad-"], div[id*="ad-"], .google_ads, .adsbygoogle, [data-ad-client]');
   elements.forEach(el => {
     if (trackedAdSlots.has(el)) return;
@@ -1254,36 +1276,94 @@ function detectAdSlots() {
       pendingAdQueue.push(el);
     }
   });
-  // Kick off processing if not already running
   if (!currentWaveProcessing) processNextAd();
 }
 
+// --- Link navigation blocker ---
+function blockLinkNavigation(e) {
+  const link = e.target.closest('a[href]');
+  if (link) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+}
+
 function globalClickListener(e) {
-  if (duckHuntEnabled) {
+  if (duckAdsEnabled) {
     initDuckAudio();
     playGunshot();
   }
 }
 
-function startDuckHunt() {
-  if (duckHuntEnabled) return;
-  duckHuntEnabled = true;
+// --- Game Over overlay ---
+function showGameOverOverlay(scoreData) {
+  const existing = document.getElementById('__duckads_gameover__');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = '__duckads_gameover__';
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: 2147483647;
+    background: rgba(0,0,0,0.85);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: Impact, 'Arial Black', sans-serif;
+    color: #fff; pointer-events: auto;
+  `;
+
+  const kills = scoreData?.kills || 0;
+  const escapes = scoreData?.escapes || 0;
+  const shots = scoreData?.shots || 0;
+  const points = scoreData?.points || 0;
+  const accuracy = shots > 0 ? Math.round((kills / shots) * 100) : 0;
+  const highScore = scoreData?.highScore || 0;
+  const isNewHigh = points > 0 && points >= highScore;
+
+  overlay.innerHTML = `
+    <div style="text-align: center;">
+      <div style="font-size: 72px; color: #FF6B00; text-shadow: 4px 4px 0 #000; margin-bottom: 10px;">GAME OVER</div>
+      ${isNewHigh ? '<div style="font-size: 28px; color: #FFD700; animation: duckads-flash-text 0.15s infinite; margin-bottom: 16px;">🏆 NEW HIGH SCORE! 🏆</div>' : ''}
+      <div style="font-size: 48px; color: #FFD700; margin-bottom: 24px;">${points.toLocaleString()} PTS</div>
+      <div style="display: flex; gap: 32px; margin-bottom: 24px; font-size: 20px;">
+        <div><span style="color: #44ff44;">${kills}</span> HITS</div>
+        <div><span style="color: #ff4444;">${escapes}</span> ESCAPES</div>
+        <div><span style="color: #44aaff;">${accuracy}%</span> ACCURACY</div>
+      </div>
+      ${highScore > 0 ? `<div style="font-size: 16px; color: #aaa; margin-bottom: 24px;">HIGH SCORE: ${Math.max(highScore, points).toLocaleString()}</div>` : ''}
+      <div style="font-size: 14px; color: #888; margin-top: 20px;">Closing in 5 seconds...</div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(overlay);
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(() => {
+    if (overlay.parentNode) overlay.remove();
+  }, 5000);
+}
+
+function startDuckAds() {
+  if (duckAdsEnabled) return;
+  duckAdsEnabled = true;
   pendingAdQueue = [];
   activeDuckCount = 0;
   currentWaveProcessing = false;
-  document.documentElement.classList.add('duck-hunt-active');
+  duckEscapeIndex = 0;
+  document.documentElement.classList.add('duck-ads-active');
   document.addEventListener('mousedown', globalClickListener, true);
+  // Block link navigation
+  document.addEventListener('click', blockLinkNavigation, true);
+  document.addEventListener('auxclick', blockLinkNavigation, true);
 
-  if (!document.getElementById('__duckhunt_style__')) {
+  if (!document.getElementById('__duckads_style__')) {
     const style = document.createElement('style');
-    style.id = '__duckhunt_style__';
+    style.id = '__duckads_style__';
     style.textContent = `
-      html.duck-hunt-active, html.duck-hunt-active * { cursor: url('${CROSSHAIR_SVG}') 16 16, crosshair !important; }
-      .__duckhunt_overlay__ { pointer-events: auto !important; }
-      #__duckhunt_viewport_overlay__ { pointer-events: none !important; }
-      #__duckhunt_viewport_overlay__ > * { pointer-events: auto; }
+      html.duck-ads-active, html.duck-ads-active * { cursor: url('${CROSSHAIR_SVG}') 16 16, crosshair !important; }
+      #__duckads_viewport_overlay__ { pointer-events: none !important; }
+      #__duckads_viewport_overlay__ > * { pointer-events: auto; }
 
-      @keyframes duckhunt-flash-text {
+      @keyframes duckads-flash-text {
         0% { color: #ff0000; text-shadow: 4px 4px 0 #000; }
         25% { color: #00ff00; text-shadow: -4px 4px 0 #000; }
         50% { color: #0000ff; text-shadow: 4px -4px 0 #000; }
@@ -1291,32 +1371,30 @@ function startDuckHunt() {
         100% { color: #ff00ff; text-shadow: 4px 4px 0 #000; }
       }
 
-      /* Slower disintegration — 2s */
-      @keyframes duckhunt-disintegrate {
+      @keyframes duckads-disintegrate {
         0% { filter: brightness(1) blur(0px); transform: scale(1); opacity: 1; }
         30% { filter: brightness(1.5) blur(2px); transform: scale(1.04); opacity: 0.9; }
         60% { filter: brightness(2.2) blur(8px); transform: scale(1.1); opacity: 0.6; }
         100% { filter: brightness(3) blur(24px); transform: scale(0); opacity: 0; }
       }
-      .duckhunt-disintegrate-anim {
-        animation: duckhunt-disintegrate 2s forwards ease-in !important;
+      .duckads-disintegrate-anim {
+        animation: duckads-disintegrate 2s forwards ease-in !important;
       }
 
-      .duckhunt-start-banner {
+      .duckads-start-banner {
         position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
         font-family: Impact, sans-serif;
-        font-size: 100px; font-weight: bold; text-transform: uppercase; letter-spacing: 5px;
+        font-size: 90px; font-weight: bold; text-transform: uppercase; letter-spacing: 5px;
         z-index: 2147483647; pointer-events: none;
-        animation: duckhunt-flash-text 0.1s infinite;
+        animation: duckads-flash-text 0.1s infinite;
       }
 
-      /* --- POW starburst --- */
-      @keyframes duckhunt-pow-in {
+      @keyframes duckads-pow-in {
         0% { transform: scale(0) rotate(-15deg); opacity: 1; }
         50% { transform: scale(1.3) rotate(5deg); opacity: 1; }
         100% { transform: scale(1.5) rotate(0deg); opacity: 0; }
       }
-      .duckhunt-pow {
+      .duckads-pow {
         position: absolute;
         width: 100px; height: 100px;
         display: flex; align-items: center; justify-content: center;
@@ -1325,75 +1403,56 @@ function startDuckHunt() {
         color: #fff;
         text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
         background: radial-gradient(circle, #FFD700 0%, #FF4500 50%, #FF0000 100%);
-        clip-path: polygon(
-          50% 0%, 63% 28%, 98% 35%, 72% 58%,
-          79% 91%, 50% 72%, 21% 91%, 28% 58%,
-          2% 35%, 37% 28%
-        );
+        clip-path: polygon(50% 0%, 63% 28%, 98% 35%, 72% 58%, 79% 91%, 50% 72%, 21% 91%, 28% 58%, 2% 35%, 37% 28%);
         pointer-events: none;
-        animation: duckhunt-pow-in 0.5s forwards ease-out;
+        animation: duckads-pow-in 0.5s forwards ease-out;
         z-index: 1000001;
       }
 
-      /* --- Floating score --- */
-      @keyframes duckhunt-float-up {
+      @keyframes duckads-float-up {
         0% { transform: translateY(0); opacity: 1; }
         100% { transform: translateY(-80px); opacity: 0; }
       }
-      .duckhunt-score-float {
+      .duckads-score-float {
         position: absolute;
         font-family: Impact, 'Arial Black', sans-serif;
         font-size: 28px; font-weight: 900;
         color: #FFD700;
         -webkit-text-stroke: 2px #000;
-        text-stroke: 2px #000;
         pointer-events: none;
-        animation: duckhunt-float-up 1.2s forwards ease-out;
+        animation: duckads-float-up 1.2s forwards ease-out;
         z-index: 1000001;
         white-space: nowrap;
       }
 
-      /* --- Escape speech bubble --- */
-      @keyframes duckhunt-bubble-pop {
+      @keyframes duckads-bubble-pop {
         0% { transform: scale(0); opacity: 0; }
         30% { transform: scale(1.15); opacity: 1; }
         50% { transform: scale(1); opacity: 1; }
         100% { transform: scale(0.9); opacity: 0; }
       }
-      .duckhunt-speech-bubble {
+      .duckads-speech-bubble {
         position: absolute;
-        background: #fff;
-        color: #000;
+        background: #fff; color: #000;
         font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
         font-size: 16px; font-weight: bold;
-        padding: 10px 16px;
-        border: 3px solid #000;
-        border-radius: 18px;
+        padding: 10px 16px; border: 3px solid #000; border-radius: 18px;
         pointer-events: none;
-        animation: duckhunt-bubble-pop 1.8s forwards ease-out;
-        z-index: 1000002;
-        white-space: nowrap;
-        max-width: 200px;
+        animation: duckads-bubble-pop 1.8s forwards ease-out;
+        z-index: 1000002; white-space: nowrap; max-width: 200px;
         filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.3));
       }
-      .duckhunt-speech-bubble::after {
-        content: '';
-        position: absolute;
-        bottom: -14px; left: 24px;
+      .duckads-speech-bubble::after {
+        content: ''; position: absolute; bottom: -14px; left: 24px;
         width: 0; height: 0;
-        border-left: 10px solid transparent;
-        border-right: 10px solid transparent;
+        border-left: 10px solid transparent; border-right: 10px solid transparent;
         border-top: 14px solid #000;
       }
-      .duckhunt-speech-bubble::before {
-        content: '';
-        position: absolute;
-        bottom: -10px; left: 26px;
+      .duckads-speech-bubble::before {
+        content: ''; position: absolute; bottom: -10px; left: 26px;
         width: 0; height: 0;
-        border-left: 8px solid transparent;
-        border-right: 8px solid transparent;
-        border-top: 12px solid #fff;
-        z-index: 1;
+        border-left: 8px solid transparent; border-right: 8px solid transparent;
+        border-top: 12px solid #fff; z-index: 1;
       }
     `;
     document.head.appendChild(style);
@@ -1403,37 +1462,54 @@ function startDuckHunt() {
   initDuckAudio();
   playStartFanfare();
   const banner = document.createElement('div');
-  banner.className = 'duckhunt-start-banner';
-  banner.textContent = 'AW, DUCK!';
+  banner.className = 'duckads-start-banner';
+  banner.textContent = 'DUCK ADS!';
   document.body.appendChild(banner);
   setTimeout(() => {
     banner.remove();
-    // Start detecting slots AFTER the sequence
     duckSlotDetectorInterval = setInterval(detectAdSlots, 2000);
     detectAdSlots();
   }, 2000);
 }
 
-function stopDuckHunt() {
-  duckHuntEnabled = false;
+function stopDuckAds(showGameOver = false) {
+  if (!duckAdsEnabled && !showGameOver) return;
+  duckAdsEnabled = false;
   currentWaveProcessing = false;
   activeDuckCount = 0;
   pendingAdQueue = [];
-  document.documentElement.classList.remove('duck-hunt-active');
+  duckEscapeIndex = 0;
+  document.documentElement.classList.remove('duck-ads-active');
   document.removeEventListener('mousedown', globalClickListener, true);
+  document.removeEventListener('click', blockLinkNavigation, true);
+  document.removeEventListener('auxclick', blockLinkNavigation, true);
   clearInterval(duckSlotDetectorInterval);
   trackedAdSlots.clear();
-  document.querySelectorAll('.__duckhunt_overlay__').forEach(e => e.remove());
+  document.querySelectorAll('.__duckads_overlay__').forEach(e => e.remove());
   if (duckViewportOverlay) { duckViewportOverlay.remove(); duckViewportOverlay = null; }
-  document.querySelectorAll('.duckhunt-disintegrate-anim').forEach(e => {
-    e.classList.remove('duckhunt-disintegrate-anim');
+  document.querySelectorAll('.duckads-disintegrate-anim').forEach(e => {
+    e.classList.remove('duckads-disintegrate-anim');
     e.style.visibility = 'visible';
   });
+
+  if (showGameOver) {
+    // Fetch final score and show game over
+    chrome.runtime.sendMessage({ type: 'GET_DUCK_ADS_FINAL_SCORE' }).then(res => {
+      if (res?.ok) showGameOverOverlay(res.score);
+    }).catch(() => {});
+  }
 }
 
-chrome.storage.sync.get(['duckHuntEnabled', 'duckHuntSound'], (res) => {
-  duckHuntSound = res.duckHuntSound !== false;
-  if (res.duckHuntEnabled) startDuckHunt();
+// Listen for messages from sidepanel
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle within the existing listener — but we also add Duck Ads messages
+  // to the existing switch in the main listener above
+});
+
+// Patch into existing message handler (the switch cases are added in the main listener above)
+
+chrome.storage.sync.get(['duckAdsSound'], (res) => {
+  duckAdsSound = res.duckAdsSound !== false;
 });
 
 } // end re-injection guard

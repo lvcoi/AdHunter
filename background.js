@@ -85,18 +85,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         const key = `duckhunt_${tabId}`;
         const data = await chrome.storage.session.get(key);
-        let score = data[key] || { kills: 0, escapes: 0, shots: 0, accuracy: 0, milestones: [] };
+        let score = data[key] || { kills: 0, escapes: 0, shots: 0, points: 0 };
         
         if (message.action === 'kill') {
           score.kills++;
           score.points = (score.points || 0) + (message.points || 100);
+          score.shots++;
         } else if (message.action === 'escape') {
           score.escapes++;
+        } else if (message.action === 'miss') {
+          score.shots++;
         }
-        if (message.action === 'kill' || message.action === 'miss') score.shots++;
+        score.accuracy = score.shots > 0 ? Math.round((score.kills / score.shots) * 100) : 0;
         score.lastUpdated = new Date().toISOString();
         
         await chrome.storage.session.set({ [key]: score });
+        sendResponse({ ok: true, score });
+        return;
+      }
+
+      case 'GET_DUCK_ADS_FINAL_SCORE': {
+        const tabId = sender.tab?.id ?? message.tabId;
+        if (typeof tabId !== 'number') {
+          sendResponse({ ok: false, error: 'Missing tab id.' });
+          return;
+        }
+        const key = `duckhunt_${tabId}`;
+        const data = await chrome.storage.session.get(key);
+        const score = data[key] || { kills: 0, escapes: 0, shots: 0, points: 0 };
+        const hsData = await chrome.storage.sync.get('duckAdsHighScore');
+        score.highScore = hsData.duckAdsHighScore || 0;
+        if (score.points > score.highScore) {
+          await chrome.storage.sync.set({ duckAdsHighScore: score.points });
+        }
         sendResponse({ ok: true, score });
         return;
       }
