@@ -606,7 +606,7 @@ if (saveCustomStyleButton) {
 }
 
 chrome.storage.sync.get({
-  activeHighlightStyle: 'minimalist-orbit',
+  activeHighlightStyle: 'solid-blue',
   customStyleConfig: null
 }, (data) => {
   if (highlightStyleSelect) {
