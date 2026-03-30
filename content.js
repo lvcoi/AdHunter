@@ -84,86 +84,77 @@ function injectStyles() {
       box-sizing: border-box;
       will-change: background;
     }
-
+    /* 1. Solid Blue */
     #${OVERLAY_ID}[data-style="solid-blue"] {
       border: 3px solid #0a84ff;
       box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 12px rgba(10,132,255,0.5);
       background: transparent;
     }
 
-    #${OVERLAY_ID}[data-style="dashed-red"] {
-      border: 3px dashed #ff3b30;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 12px rgba(255,59,48,0.3);
-      background: transparent;
-    }
-
+    /* 2. Glowing Green */
     #${OVERLAY_ID}[data-style="glowing-green"] {
       border: 3px solid #32d74b;
       box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 24px #32d74b, inset 0 0 12px rgba(50,215,75,0.2);
-      background: rgba(50, 215, 75, 0.1);
+      background: transparent;
     }
 
-    /* Electric Pulse */
+    /* 3. Electric Pulse */
     @keyframes element-vault-electric-pulse-glow {
-      0%, 100% { filter: drop-shadow(0 0 2px #dd8448) drop-shadow(0 0 5px #dd8448); }
-      50% { filter: drop-shadow(0 0 4px #dd8448) drop-shadow(0 0 15px #dd8448); }
+      0%, 100% { filter: drop-shadow(0 0 2px rgba(221, 132, 72, 0.4)) drop-shadow(0 0 5px rgba(221, 132, 72, 0.4)); }
+      50% { filter: drop-shadow(0 0 4px rgba(221, 132, 72, 0.6)) drop-shadow(0 0 15px rgba(221, 132, 72, 0.6)); }
     }
     #${OVERLAY_ID}[data-style="electric-pulse"] {
       border: 3px solid #dd8448;
-      background: linear-gradient(-30deg, rgba(221, 132, 72, 0.1), transparent, rgba(221, 132, 72, 0.1));
-      box-shadow: 0 0 15px rgba(221, 132, 72, 0.5), inset 0 0 15px rgba(221, 132, 72, 0.5);
+      background: transparent;
+      box-shadow: 0 0 15px rgba(221, 132, 72, 0.3), inset 0 0 15px rgba(221, 132, 72, 0.3);
       animation: element-vault-electric-pulse-glow 2s ease-in-out infinite;
     }
-    #${OVERLAY_ID}[data-style="electric-pulse"]::before {
-      content: "";
-      position: absolute;
-      inset: -3px;
-      border: 2px solid rgba(221, 132, 72, 0.6);
-      border-radius: inherit;
-      filter: blur(2px);
-    }
-    #${OVERLAY_ID}[data-style="electric-pulse"]::after {
-      content: "";
-      position: absolute;
-      inset: -3px;
-      border: 2px solid rgba(221, 132, 72, 0.8);
-      border-radius: inherit;
-      filter: blur(6px);
-    }
 
-    /* Morphing Blob */
+    /* 4. Morphing Blob */
     @keyframes element-vault-morphing-blob-anim {
-      0% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; box-shadow: 5px 5px 20px rgba(0,0,0,0.2); }
+      0% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; box-shadow: 5px 5px 20px rgba(33, 212, 253, 0.4); }
       25% { border-radius: 58% 42% 75% 25% / 76% 46% 54% 24%; }
-      50% { border-radius: 50% 50% 33% 67% / 55% 27% 73% 45%; box-shadow: -5px -2px 20px rgba(0,0,0,0.2); }
+      50% { border-radius: 50% 50% 33% 67% / 55% 27% 73% 45%; box-shadow: -5px -2px 20px rgba(183, 33, 255, 0.4); }
       75% { border-radius: 33% 67% 58% 42% / 63% 68% 32% 37%; }
-      100% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; box-shadow: 5px 5px 20px rgba(0,0,0,0.2); }
+      100% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; box-shadow: 5px 5px 20px rgba(33, 212, 253, 0.4); }
     }
     #${OVERLAY_ID}[data-style="morphing-blob"] {
+      background: transparent;
+      border: none;
+    }
+    #${OVERLAY_ID}[data-style="morphing-blob"]::before {
+      content: "";
+      position: absolute;
+      inset: -10px;
+      padding: 4px;
       background-image: linear-gradient(19deg, #21D4FD 0%, #B721FF 100%);
       animation: element-vault-morphing-blob-anim 5s infinite;
-      opacity: 0.8;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.14);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
     }
 
-    /* Offset Multiply */
+    /* 5. Offset Multiply */
     @keyframes element-vault-offset-multiply-border {
       0%, 100% { clip-path: polygon(0 0, calc(100% - 20px) 20px, 100% 100%, 20px calc(100% - 20px)); }
       50% { clip-path: polygon(20px 20px, 100% 0, calc(100% - 20px) calc(100% - 20px), 0 100%); }
     }
     #${OVERLAY_ID}[data-style="offset-multiply"] {
-      background-color: transparent;
-      border: 2px solid #DDFFF7;
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      background: transparent;
+      border: 2px solid rgba(255,255,255,0.2);
     }
     #${OVERLAY_ID}[data-style="offset-multiply"]::before,
     #${OVERLAY_ID}[data-style="offset-multiply"]::after {
       content: '';
       position: absolute;
-      inset: -10px;
-      mix-blend-mode: multiply;
+      inset: -15px;
+      padding: 3px;
+      mix-blend-mode: screen;
       animation: element-vault-offset-multiply-border 5s ease-in-out infinite;
       border-radius: inherit;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
     }
     #${OVERLAY_ID}[data-style="offset-multiply"]::before {
       background-color: #AA4465;
@@ -175,78 +166,93 @@ function injectStyles() {
       animation-delay: -2.5s;
     }
 
-    /* Rainbow Standard */
+    /* 6. Rainbow Standard */
     @keyframes element-vault-rainbow-move {
       0% { background-position: 0 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0 50%; }
     }
     #${OVERLAY_ID}[data-style="rainbow-standard"] {
-      border: 3px solid transparent;
-      background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)) padding-box,
-                  linear-gradient(60deg, hsl(224, 85%, 66%), hsl(269, 85%, 66%), hsl(314, 85%, 66%), hsl(359, 85%, 66%), hsl(44, 85%, 66%), hsl(89, 85%, 66%), hsl(134, 85%, 66%), hsl(179, 85%, 66%)) border-box;
+      padding: 3px;
+      background: linear-gradient(60deg, hsl(224, 85%, 66%), hsl(269, 85%, 66%), hsl(314, 85%, 66%), hsl(359, 85%, 66%), hsl(44, 85%, 66%), hsl(89, 85%, 66%), hsl(134, 85%, 66%), hsl(179, 85%, 66%));
       background-size: 300% 300%;
       animation: element-vault-rainbow-move 4s alternate infinite;
-    }
-
-    /* Cyber Neon */
-    @keyframes element-vault-cyber-blink {
-      from, 2%, 5%, 19%, 21%, to { opacity: 0.1; }
-      1%, 4%, 20% { opacity: 1; }
-    }
-    #${OVERLAY_ID}[data-style="cyber-neon"] {
-      border: 2px solid #444;
-      background: 
-        conic-gradient(from 315deg at 50% 75%, transparent, #444, black),
-        conic-gradient(from 225deg at 50% 25%, black, #444, transparent),
-        rgba(34, 34, 34, 0.4);
-      box-shadow: 0 0 15px #f672ca, inset 0 0 15px #6eccee;
-      overflow: hidden;
-    }
-    #${OVERLAY_ID}[data-style="cyber-neon"]::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: conic-gradient(from 0deg, #f672ca, transparent 30%, #6eccee 50%, transparent 80%, #f672ca);
-      mix-blend-mode: overlay;
-      animation: element-vault-spin 4s linear infinite;
-    }
-
-    /* Trail Glow */
-    #${OVERLAY_ID}[data-style="trail-glow"] {
-      --element-vault-angle: 0deg;
-      padding: 3px;
-      background: conic-gradient(
-        from var(--element-vault-angle),
-        transparent 0deg,
-        transparent 270deg,
-        #f672ca 360deg
-      );
-      animation: element-vault-spin 2s linear infinite;
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
     }
-    #${OVERLAY_ID}[data-style="trail-glow"]::after {
+
+    /* 7. Cyber Neon */
+    @keyframes element-vault-cyber-pulse {
+      0%, 100% { box-shadow: 0 0 10px #f672ca, inset 0 0 5px #f672ca; border-color: rgba(246, 114, 202, 0.8); }
+      50% { box-shadow: 0 0 25px #f672ca, inset 0 0 15px #f672ca; border-color: rgba(246, 114, 202, 1); }
+    }
+    #${OVERLAY_ID}[data-style="cyber-neon"] {
+      border: 2px solid #f672ca;
+      background: transparent;
+      animation: element-vault-cyber-pulse 2s infinite;
+    }
+    #${OVERLAY_ID}[data-style="cyber-neon"]::before {
       content: "";
       position: absolute;
       inset: 0;
-      border: 1px solid rgba(255,255,255,0.1);
+      padding: 10px;
+      background: rgba(110, 204, 238, 0.1);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
       border-radius: inherit;
+      pointer-events: none;
     }
 
-    /* Conic Mask */
-    #${OVERLAY_ID}[data-style="conic-mask"] {
+    /* 8. Dot Trace */
+    @keyframes element-vault-trace {
+      0% { offset-distance: 0%; }
+      100% { offset-distance: 100%; }
+    }
+    #${OVERLAY_ID}[data-style="dot-trace"] {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: transparent;
+      border-radius: inherit;
+    }
+    #${OVERLAY_ID}[data-style="dot-trace"]::after {
+      content: '';
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background: #0a84ff;
+      border-radius: 50%;
+      box-shadow: 0 0 15px 5px #0a84ff, 0 0 30px #0a84ff;
+      offset-path: border-box;
+      offset-anchor: 50% 50%;
+      animation: element-vault-trace 3s infinite linear;
+      top: 0;
+      left: 0;
+    }
+
+    /* 9. Spinning Dash */
+    #${OVERLAY_ID}[data-style="spinning-dash"] {
+      padding: 3px;
       --element-vault-angle: 0deg;
-      border: 3px solid #0a84ff;
-      -webkit-mask: 
-        conic-gradient(from var(--element-vault-angle) at 50% 50%, transparent 25%, #000 0) 0 0 / 100% 100%,
-        linear-gradient(#000 0 0) content-box;
-      -webkit-mask-composite: source-in;
-      mask-composite: intersect;
       animation: element-vault-spin 3s linear infinite;
-      box-shadow: 0 0 15px #0a84ff;
+      background: conic-gradient(from var(--element-vault-angle), #32d74b 0deg, #32d74b 45deg, transparent 45deg, transparent 180deg, #32d74b 180deg, #32d74b 225deg, transparent 225deg);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      filter: drop-shadow(0 0 5px #32d74b);
+    }
+
+    /* 10. Neon Pulse */
+    @keyframes element-vault-neon-breathe {
+      0%, 100% { box-shadow: 0 0 5px #0ea5e9, inset 0 0 5px #0ea5e9; border-color: rgba(14, 165, 233, 0.4); }
+      50% { box-shadow: 0 0 20px #0ea5e9, inset 0 0 10px #0ea5e9; border-color: rgba(14, 165, 233, 1); }
+    }
+    #${OVERLAY_ID}[data-style="neon-pulse"] {
+      border: 2px solid rgba(14, 165, 233, 0.6);
+      animation: element-vault-neon-breathe 2s ease-in-out infinite;
+      background: transparent;
     }
 
     html.__element-vault-pick-mode__,
