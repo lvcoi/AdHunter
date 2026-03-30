@@ -953,6 +953,14 @@ const trackedAdSlots = new Set();
 let duckAudioCtx = null;
 let duckSlotDetectorInterval = null;
 
+// Sequential ad queue
+let pendingAdQueue = [];
+let activeDuckCount = 0;
+let currentWaveProcessing = false;
+let duckViewportOverlay = null;
+
+const ESCAPE_PHRASES = ["Ha Ha!", "I got away!", "Ads Forever!", "We will rule the World!"];
+
 const CROSSHAIR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><rect x="15" y="0" width="2" height="12" fill="%23FF6B00"/><rect x="15" y="20" width="2" height="12" fill="%23FF6B00"/><rect x="0" y="15" width="12" height="2" fill="%23FF6B00"/><rect x="20" y="15" width="12" height="2" fill="%23FF6B00"/><rect x="14" y="14" width="4" height="4" fill="%23808080"/></svg>`;
 
 function getDuckSvg(color) {
@@ -1031,128 +1039,208 @@ function sendScoreUpdate(action, points = 0) {
   chrome.runtime.sendMessage({ type: 'UPDATE_DUCK_SCORE', action, points }).catch(() => {});
 }
 
-function spawnDuckInSlot(slotElement) {
-  const rect = slotElement.getBoundingClientRect();
-  if (rect.width < 100 || rect.height < 50) return;
-
-  const overlay = document.createElement('div');
-  overlay.className = '__duckhunt_overlay__';
-  overlay.style.position = 'absolute';
-  overlay.style.top = `${slotElement.offsetTop}px`;
-  overlay.style.left = `${slotElement.offsetLeft}px`;
-  overlay.style.width = `${rect.width}px`;
-  overlay.style.height = `${rect.height}px`;
-  overlay.style.overflow = 'hidden';
-  overlay.style.zIndex = '999999';
-  overlay.style.pointerEvents = 'auto';
-
-  // Apply Disintegration animation to the ad slot
-  slotElement.classList.add('duckhunt-disintegrate-anim');
-
-  // After disintegration, spawn 2-3 ducks
-  setTimeout(() => {
-    slotElement.style.visibility = 'hidden'; 
-    slotElement.parentNode.insertBefore(overlay, slotElement);
-
-    const numDucks = Math.floor(Math.random() * 2) + 2; // 2 or 3
-    for(let i=0; i<numDucks; i++) {
-      createDuck();
-    }
-  }, 600);
-
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) {
+// --- Viewport overlay for free-roaming ducks ---
+function ensureDuckViewportOverlay() {
+  if (duckViewportOverlay && duckViewportOverlay.parentNode) return duckViewportOverlay;
+  duckViewportOverlay = document.createElement('div');
+  duckViewportOverlay.id = '__duckhunt_viewport_overlay__';
+  duckViewportOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;pointer-events:none;overflow:visible;';
+  document.documentElement.appendChild(duckViewportOverlay);
+  // Click on the viewport overlay background = miss
+  duckViewportOverlay.addEventListener('mousedown', (e) => {
+    if (e.target === duckViewportOverlay) {
       sendScoreUpdate('miss');
     }
   });
+  return duckViewportOverlay;
+}
 
-  function createDuck() {
-    if (!duckHuntEnabled || !overlay.parentNode) return;
-    const duckData = getDuckType();
-    const duck = document.createElement('div');
-    duck.style.position = 'absolute';
-    duck.style.width = '40px';
-    duck.style.height = '40px';
-    duck.style.backgroundImage = `url('${getDuckSvg(duckData.color)}')`;
-    duck.style.backgroundSize = 'contain';
-    duck.style.backgroundRepeat = 'no-repeat';
-    duck.style.pointerEvents = 'auto';
-    duck.style.cursor = `url('${CROSSHAIR_SVG}') 16 16, crosshair`;
-    
-    // Random start position
-    let x = Math.random() * (rect.width - 40);
-    let y = Math.random() * (rect.height - 40);
-    let baseSpeed = 1 + Math.random() * 2;
-    let vx = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * duckData.speedMultiplier;
-    let vy = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * duckData.speedMultiplier;
-    
-    duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
-    overlay.appendChild(duck);
+// --- POW starburst effect ---
+function showPowEffect(screenX, screenY) {
+  const vpOverlay = ensureDuckViewportOverlay();
+  const pow = document.createElement('div');
+  pow.className = 'duckhunt-pow';
+  pow.textContent = 'POW!';
+  pow.style.left = `${screenX - 50}px`;
+  pow.style.top = `${screenY - 50}px`;
+  vpOverlay.appendChild(pow);
+  setTimeout(() => pow.remove(), 500);
+}
 
-    let alive = true;
-    let animFrame = null;
+// --- Floating score text ---
+function showScoreFloat(screenX, screenY, points) {
+  const vpOverlay = ensureDuckViewportOverlay();
+  const floater = document.createElement('div');
+  floater.className = 'duckhunt-score-float';
+  floater.textContent = `+${points}`;
+  floater.style.left = `${screenX}px`;
+  floater.style.top = `${screenY - 20}px`;
+  vpOverlay.appendChild(floater);
+  setTimeout(() => floater.remove(), 1200);
+}
 
-    duck.addEventListener('mousedown', (e) => {
-      if (!alive) return;
-      alive = false;
-      e.preventDefault();
-      e.stopPropagation();
-      initDuckAudio();
-      setTimeout(playHit, 10); 
-      sendScoreUpdate('kill', duckData.points);
-      
-      duck.style.backgroundImage = `url('${DUCK_FLIP_SVG}')`;
-      duck.style.transform = `translate(${x}px, ${y}px) scaleY(-1)`;
-      
-      let fallY = y;
-      function fall() {
-        if (!duck.parentNode) return;
-        fallY += 5;
-        duck.style.transform = `translate(${x}px, ${fallY}px) scaleY(-1)`;
-        if (fallY < rect.height) {
-          requestAnimationFrame(fall);
-        } else {
-          duck.remove();
-          if (duckHuntEnabled) setTimeout(createDuck, 3000 + Math.random() * 4000);
-        }
+// --- Comic speech bubble on escape ---
+function showEscapeBubble(screenX, screenY) {
+  const vpOverlay = ensureDuckViewportOverlay();
+  const bubble = document.createElement('div');
+  bubble.className = 'duckhunt-speech-bubble';
+  bubble.textContent = ESCAPE_PHRASES[Math.floor(Math.random() * ESCAPE_PHRASES.length)];
+  // Clamp to viewport
+  const bx = Math.min(Math.max(10, screenX - 60), window.innerWidth - 180);
+  const by = Math.min(Math.max(10, screenY - 60), window.innerHeight - 60);
+  bubble.style.left = `${bx}px`;
+  bubble.style.top = `${by}px`;
+  vpOverlay.appendChild(bubble);
+  setTimeout(() => bubble.remove(), 1800);
+}
+
+// --- Duck resolved (hit or escaped) — track wave completion ---
+function onDuckResolved() {
+  activeDuckCount--;
+  if (activeDuckCount <= 0) {
+    activeDuckCount = 0;
+    currentWaveProcessing = false;
+    processNextAd();
+  }
+}
+
+// --- Sequential ad processing ---
+function processNextAd() {
+  if (currentWaveProcessing || !duckHuntEnabled) return;
+  if (pendingAdQueue.length === 0) return;
+  currentWaveProcessing = true;
+  const slotElement = pendingAdQueue.shift();
+  spawnDuckInSlot(slotElement);
+}
+
+function spawnDuckInSlot(slotElement) {
+  const rect = slotElement.getBoundingClientRect();
+  if (rect.width < 100 || rect.height < 50) {
+    currentWaveProcessing = false;
+    processNextAd();
+    return;
+  }
+
+  const vpOverlay = ensureDuckViewportOverlay();
+
+  // Apply slower disintegration animation to the ad slot
+  slotElement.classList.add('duckhunt-disintegrate-anim');
+
+  // After disintegration (~2s), spawn 2-3 ducks into the viewport overlay
+  setTimeout(() => {
+    slotElement.style.visibility = 'hidden';
+
+    const numDucks = Math.floor(Math.random() * 2) + 2; // 2 or 3
+    activeDuckCount += numDucks;
+    // Spawn ducks at the ad's screen position, then they roam freely
+    const spawnCenterX = rect.left + rect.width / 2;
+    const spawnCenterY = rect.top + rect.height / 2;
+    for (let i = 0; i < numDucks; i++) {
+      createFreeDuck(vpOverlay, spawnCenterX, spawnCenterY);
+    }
+  }, 2000);
+}
+
+function createFreeDuck(vpOverlay, spawnX, spawnY) {
+  if (!duckHuntEnabled || !vpOverlay.parentNode) { onDuckResolved(); return; }
+  const duckData = getDuckType();
+  const duck = document.createElement('div');
+  duck.style.position = 'absolute';
+  duck.style.width = '40px';
+  duck.style.height = '40px';
+  duck.style.backgroundImage = `url('${getDuckSvg(duckData.color)}')`;
+  duck.style.backgroundSize = 'contain';
+  duck.style.backgroundRepeat = 'no-repeat';
+  duck.style.pointerEvents = 'auto';
+  duck.style.cursor = `url('${CROSSHAIR_SVG}') 16 16, crosshair`;
+  duck.style.zIndex = '1000000';
+
+  // Start near the ad's center with some jitter
+  let x = spawnX + (Math.random() - 0.5) * 60 - 20;
+  let y = spawnY + (Math.random() - 0.5) * 40 - 20;
+  let baseSpeed = 1.5 + Math.random() * 2;
+  let vx = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * duckData.speedMultiplier;
+  let vy = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * duckData.speedMultiplier;
+
+  duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
+  vpOverlay.appendChild(duck);
+
+  let alive = true;
+
+  duck.addEventListener('mousedown', (e) => {
+    if (!alive) return;
+    alive = false;
+    e.preventDefault();
+    e.stopPropagation();
+    initDuckAudio();
+    setTimeout(playHit, 10);
+    sendScoreUpdate('kill', duckData.points);
+
+    // Show POW and score float
+    showPowEffect(x + 20, y + 20);
+    showScoreFloat(x + 20, y - 10, duckData.points);
+
+    duck.style.backgroundImage = `url('${DUCK_FLIP_SVG}')`;
+    duck.style.transform = `translate(${x}px, ${y}px) scaleY(-1)`;
+
+    let fallY = y;
+    function fall() {
+      if (!duck.parentNode) return;
+      fallY += 5;
+      duck.style.transform = `translate(${x}px, ${fallY}px) scaleY(-1)`;
+      if (fallY < window.innerHeight + 40) {
+        requestAnimationFrame(fall);
+      } else {
+        duck.remove();
+        onDuckResolved();
       }
-      requestAnimationFrame(fall);
-    });
+    }
+    requestAnimationFrame(fall);
+  });
 
-    let startTime = performance.now();
-    function animate(time) {
-      if (!alive || !duckHuntEnabled || !duck.parentNode) return;
-      x += vx;
-      y += vy;
-      
-      if (x <= 0 || x >= rect.width - 40) { vx *= -1; }
-      if (y <= 0 || y >= rect.height - 40) { vy *= -1; }
-      
-      duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
-      
-      if (time - startTime > 10000) {
-        alive = false;
-        sendScoreUpdate('escape');
-        duck.style.opacity = '0.5';
+  const startTime = performance.now();
+  function animate(time) {
+    if (!alive || !duckHuntEnabled || !duck.parentNode) return;
+    x += vx;
+    y += vy;
+
+    // Bounce off viewport edges
+    const vw = window.innerWidth - 40;
+    const vh = window.innerHeight - 40;
+    if (x <= 0 || x >= vw) { vx *= -1; x = Math.max(0, Math.min(x, vw)); }
+    if (y <= 0 || y >= vh) { vy *= -1; y = Math.max(0, Math.min(y, vh)); }
+
+    duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
+
+    if (time - startTime > 10000) {
+      alive = false;
+      sendScoreUpdate('escape');
+
+      // Show escape speech bubble
+      showEscapeBubble(x + 20, y);
+
+      // Wait for bubble to show, then fly away
+      setTimeout(() => {
         let escapeY = y;
         function escapeAnim() {
           if (!duck.parentNode) return;
-          escapeY -= 3;
+          escapeY -= 4;
           duck.style.transform = `translate(${x}px, ${escapeY}px) scaleX(${vx > 0 ? 1 : -1})`;
-          if (escapeY > -40) {
+          duck.style.opacity = String(Math.max(0, (escapeY + 40) / (y + 40)));
+          if (escapeY > -60) {
             requestAnimationFrame(escapeAnim);
           } else {
             duck.remove();
-            if (duckHuntEnabled) setTimeout(createDuck, 3000 + Math.random() * 4000);
+            onDuckResolved();
           }
         }
         requestAnimationFrame(escapeAnim);
-        return;
-      }
-      animFrame = requestAnimationFrame(animate);
+      }, 1500);
+      return;
     }
-    animFrame = requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
   }
+  requestAnimationFrame(animate);
 }
 
 function detectAdSlots() {
@@ -1163,9 +1251,11 @@ function detectAdSlots() {
     const rect = el.getBoundingClientRect();
     if (rect.width >= 100 && rect.height >= 50 && (el.tagName === 'IFRAME' || !el.innerText.trim() || el.innerHTML.includes('<img'))) {
       trackedAdSlots.add(el);
-      spawnDuckInSlot(el);
+      pendingAdQueue.push(el);
     }
   });
+  // Kick off processing if not already running
+  if (!currentWaveProcessing) processNextAd();
 }
 
 function globalClickListener(e) {
@@ -1178,6 +1268,9 @@ function globalClickListener(e) {
 function startDuckHunt() {
   if (duckHuntEnabled) return;
   duckHuntEnabled = true;
+  pendingAdQueue = [];
+  activeDuckCount = 0;
+  currentWaveProcessing = false;
   document.documentElement.classList.add('duck-hunt-active');
   document.addEventListener('mousedown', globalClickListener, true);
 
@@ -1187,7 +1280,9 @@ function startDuckHunt() {
     style.textContent = `
       html.duck-hunt-active, html.duck-hunt-active * { cursor: url('${CROSSHAIR_SVG}') 16 16, crosshair !important; }
       .__duckhunt_overlay__ { pointer-events: auto !important; }
-      
+      #__duckhunt_viewport_overlay__ { pointer-events: none !important; }
+      #__duckhunt_viewport_overlay__ > * { pointer-events: auto; }
+
       @keyframes duckhunt-flash-text {
         0% { color: #ff0000; text-shadow: 4px 4px 0 #000; }
         25% { color: #00ff00; text-shadow: -4px 4px 0 #000; }
@@ -1195,20 +1290,110 @@ function startDuckHunt() {
         75% { color: #ffff00; text-shadow: -4px -4px 0 #000; }
         100% { color: #ff00ff; text-shadow: 4px 4px 0 #000; }
       }
+
+      /* Slower disintegration — 2s */
       @keyframes duckhunt-disintegrate {
         0% { filter: brightness(1) blur(0px); transform: scale(1); opacity: 1; }
-        50% { filter: brightness(2) blur(5px); transform: scale(1.1); opacity: 0.8; }
-        100% { filter: brightness(3) blur(20px); transform: scale(0); opacity: 0; }
+        30% { filter: brightness(1.5) blur(2px); transform: scale(1.04); opacity: 0.9; }
+        60% { filter: brightness(2.2) blur(8px); transform: scale(1.1); opacity: 0.6; }
+        100% { filter: brightness(3) blur(24px); transform: scale(0); opacity: 0; }
       }
       .duckhunt-disintegrate-anim {
-        animation: duckhunt-disintegrate 0.6s forwards ease-in !important;
+        animation: duckhunt-disintegrate 2s forwards ease-in !important;
       }
+
       .duckhunt-start-banner {
         position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
         font-family: Impact, sans-serif;
         font-size: 100px; font-weight: bold; text-transform: uppercase; letter-spacing: 5px;
         z-index: 2147483647; pointer-events: none;
         animation: duckhunt-flash-text 0.1s infinite;
+      }
+
+      /* --- POW starburst --- */
+      @keyframes duckhunt-pow-in {
+        0% { transform: scale(0) rotate(-15deg); opacity: 1; }
+        50% { transform: scale(1.3) rotate(5deg); opacity: 1; }
+        100% { transform: scale(1.5) rotate(0deg); opacity: 0; }
+      }
+      .duckhunt-pow {
+        position: absolute;
+        width: 100px; height: 100px;
+        display: flex; align-items: center; justify-content: center;
+        font-family: Impact, 'Arial Black', sans-serif;
+        font-size: 32px; font-weight: 900;
+        color: #fff;
+        text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+        background: radial-gradient(circle, #FFD700 0%, #FF4500 50%, #FF0000 100%);
+        clip-path: polygon(
+          50% 0%, 63% 28%, 98% 35%, 72% 58%,
+          79% 91%, 50% 72%, 21% 91%, 28% 58%,
+          2% 35%, 37% 28%
+        );
+        pointer-events: none;
+        animation: duckhunt-pow-in 0.5s forwards ease-out;
+        z-index: 1000001;
+      }
+
+      /* --- Floating score --- */
+      @keyframes duckhunt-float-up {
+        0% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(-80px); opacity: 0; }
+      }
+      .duckhunt-score-float {
+        position: absolute;
+        font-family: Impact, 'Arial Black', sans-serif;
+        font-size: 28px; font-weight: 900;
+        color: #FFD700;
+        -webkit-text-stroke: 2px #000;
+        text-stroke: 2px #000;
+        pointer-events: none;
+        animation: duckhunt-float-up 1.2s forwards ease-out;
+        z-index: 1000001;
+        white-space: nowrap;
+      }
+
+      /* --- Escape speech bubble --- */
+      @keyframes duckhunt-bubble-pop {
+        0% { transform: scale(0); opacity: 0; }
+        30% { transform: scale(1.15); opacity: 1; }
+        50% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(0.9); opacity: 0; }
+      }
+      .duckhunt-speech-bubble {
+        position: absolute;
+        background: #fff;
+        color: #000;
+        font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+        font-size: 16px; font-weight: bold;
+        padding: 10px 16px;
+        border: 3px solid #000;
+        border-radius: 18px;
+        pointer-events: none;
+        animation: duckhunt-bubble-pop 1.8s forwards ease-out;
+        z-index: 1000002;
+        white-space: nowrap;
+        max-width: 200px;
+        filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.3));
+      }
+      .duckhunt-speech-bubble::after {
+        content: '';
+        position: absolute;
+        bottom: -14px; left: 24px;
+        width: 0; height: 0;
+        border-left: 10px solid transparent;
+        border-right: 10px solid transparent;
+        border-top: 14px solid #000;
+      }
+      .duckhunt-speech-bubble::before {
+        content: '';
+        position: absolute;
+        bottom: -10px; left: 26px;
+        width: 0; height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-top: 12px solid #fff;
+        z-index: 1;
       }
     `;
     document.head.appendChild(style);
@@ -1231,11 +1416,15 @@ function startDuckHunt() {
 
 function stopDuckHunt() {
   duckHuntEnabled = false;
+  currentWaveProcessing = false;
+  activeDuckCount = 0;
+  pendingAdQueue = [];
   document.documentElement.classList.remove('duck-hunt-active');
   document.removeEventListener('mousedown', globalClickListener, true);
   clearInterval(duckSlotDetectorInterval);
   trackedAdSlots.clear();
   document.querySelectorAll('.__duckhunt_overlay__').forEach(e => e.remove());
+  if (duckViewportOverlay) { duckViewportOverlay.remove(); duckViewportOverlay = null; }
   document.querySelectorAll('.duckhunt-disintegrate-anim').forEach(e => {
     e.classList.remove('duckhunt-disintegrate-anim');
     e.style.visibility = 'visible';
