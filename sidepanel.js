@@ -13,6 +13,19 @@ const adBlockToggle = document.getElementById('adBlockToggle');
 const adBlockLabel = document.getElementById('adBlockLabel');
 const highlightStyleSelect = document.getElementById('highlightStyleSelect');
 
+const duckHuntToggle = document.getElementById('duckHuntToggle');
+const duckHuntLabel = document.getElementById('duckHuntLabel');
+const duckHuntSettingsPanel = document.getElementById('duckHuntSettingsPanel');
+const resetDuckScoreBtn = document.getElementById('resetDuckScoreBtn');
+const duckKills = document.getElementById('duckKills');
+const duckEscapes = document.getElementById('duckEscapes');
+const duckAccuracy = document.getElementById('duckAccuracy');
+const duckHuntSoundToggle = document.getElementById('duckHuntSoundToggle');
+
+let duckHuntEnabled = false;
+let duckHuntSound = true;
+
+
 let activeTabId = null;
 let activeTabUrl = '';
 let selectedRecordId = null;
@@ -75,6 +88,40 @@ async function refreshAdBlockState() {
   }
 }
 
+
+function renderDuckHuntToggle() {
+  duckHuntToggle.checked = duckHuntEnabled;
+  duckHuntLabel.textContent = duckHuntEnabled ? 'On' : 'Off';
+  duckHuntSettingsPanel.style.display = duckHuntEnabled ? 'block' : 'none';
+}
+
+function updateDuckScoreUI(score) {
+  if (!score) {
+    duckKills.textContent = '0';
+    duckEscapes.textContent = '0';
+    duckAccuracy.textContent = '0%';
+    return;
+  }
+  duckKills.textContent = score.kills || 0;
+  duckEscapes.textContent = score.escapes || 0;
+  const acc = score.shots > 0 ? Math.round((score.kills / score.shots) * 100) : 0;
+  duckAccuracy.textContent = `${acc}%`;
+}
+
+async function refreshDuckHuntState() {
+  const settings = await chrome.storage.sync.get(['duckHuntEnabled', 'duckHuntSound']);
+  duckHuntEnabled = Boolean(settings.duckHuntEnabled);
+  duckHuntSound = settings.duckHuntSound !== false; // default true
+  duckHuntSoundToggle.checked = duckHuntSound;
+  renderDuckHuntToggle();
+  
+  if (activeTabId) {
+    const sessionData = await chrome.storage.session.get(`duckhunt_${activeTabId}`);
+    updateDuckScoreUI(sessionData[`duckhunt_${activeTabId}`]);
+  }
+}
+
+
 async function refresh() {
   if (refreshInFlight) return;
   refreshInFlight = true;
@@ -111,6 +158,7 @@ async function refreshInner() {
 
   render();
   await refreshAdBlockState();
+  await refreshDuckHuntState();
 }
 
 function render() {
@@ -803,3 +851,31 @@ if (cpHexInput) {
     });
   });
 }
+
+
+duckHuntToggle.addEventListener('change', async () => {
+  duckHuntEnabled = duckHuntToggle.checked;
+  renderDuckHuntToggle();
+  await chrome.storage.sync.set({ duckHuntEnabled });
+  // Tell content script
+  try { await sendToActiveTab({ type: 'DUCK_HUNT_TOGGLED', enabled: duckHuntEnabled }); } catch (e) {}
+});
+
+duckHuntSoundToggle.addEventListener('change', async () => {
+  duckHuntSound = duckHuntSoundToggle.checked;
+  await chrome.storage.sync.set({ duckHuntSound });
+  try { await sendToActiveTab({ type: 'DUCK_HUNT_SETTINGS_CHANGED', sound: duckHuntSound }); } catch (e) {}
+});
+
+resetDuckScoreBtn.addEventListener('click', async () => {
+  if (!activeTabId) return;
+  await chrome.storage.session.remove(`duckhunt_${activeTabId}`);
+  updateDuckScoreUI(null);
+  try { await sendToActiveTab({ type: 'DUCK_HUNT_SCORE_RESET' }); } catch (e) {}
+});
+
+chrome.storage.session.onChanged.addListener((changes) => {
+  if (activeTabId && changes[`duckhunt_${activeTabId}`]) {
+    updateDuckScoreUI(changes[`duckhunt_${activeTabId}`].newValue);
+  }
+});

@@ -888,6 +888,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ ok: true });
         break;
 
+      
+      case 'DUCK_HUNT_TOGGLED':
+        if (message.enabled) startDuckHunt();
+        else stopDuckHunt();
+        sendResponse({ ok: true });
+        break;
+
+      case 'DUCK_HUNT_SETTINGS_CHANGED':
+        if (message.sound !== undefined) duckHuntSound = message.sound;
+        sendResponse({ ok: true });
+        break;
+
       case 'START_PICK_MODE':
         startPickMode();
         sendResponse({ ok: true });
@@ -932,5 +944,222 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true;
 });
+
+
+// --- DUCK HUNT LOGIC ---
+let duckHuntEnabled = false;
+let duckHuntSound = true;
+const trackedAdSlots = new Set();
+let duckAudioCtx = null;
+let duckSlotDetectorInterval = null;
+
+const DUCK_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="40" height="40"><path fill="%23FFD700" d="M6 2h4v2h2v2h2v2h-2v4H2v-2H0V8h2V6h2V4h2V2z"/><rect x="12" y="6" width="4" height="2" fill="%23FF6B00"/><rect x="6" y="4" width="2" height="2" fill="%23000"/></svg>`;
+const DUCK_FLIP_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="40" height="40"><path fill="%23FF0000" d="M6 2h4v2h2v2h2v2h-2v4H2v-2H0V8h2V6h2V4h2V2z"/><rect x="12" y="6" width="4" height="2" fill="%23FF6B00"/><rect x="6" y="4" width="2" height="2" fill="%23000"/></svg>`;
+
+function initDuckAudio() {
+  if (!duckAudioCtx) {
+    try { duckAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  }
+  if (duckAudioCtx && duckAudioCtx.state === 'suspended') {
+    duckAudioCtx.resume();
+  }
+}
+
+function playGunshot() {
+  if (!duckHuntSound || !duckAudioCtx) return;
+  const t = duckAudioCtx.currentTime;
+  const osc = duckAudioCtx.createOscillator();
+  const gain = duckAudioCtx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(150, t);
+  osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.1);
+  gain.gain.setValueAtTime(0.5, t);
+  gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+  osc.connect(gain);
+  gain.connect(duckAudioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.1);
+}
+
+function playQuack() {
+  if (!duckHuntSound || !duckAudioCtx) return;
+  const t = duckAudioCtx.currentTime;
+  const osc = duckAudioCtx.createOscillator();
+  const gain = duckAudioCtx.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(400, t);
+  osc.frequency.exponentialRampToValueAtTime(200, t + 0.2);
+  gain.gain.setValueAtTime(0.3, t);
+  gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+  osc.connect(gain);
+  gain.connect(duckAudioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.2);
+}
+
+function sendScoreUpdate(action) {
+  chrome.runtime.sendMessage({ type: 'UPDATE_DUCK_SCORE', action }).catch(() => {});
+}
+
+function spawnDuckInSlot(slotElement) {
+  const rect = slotElement.getBoundingClientRect();
+  if (rect.width < 100 || rect.height < 50) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = '__duckhunt_overlay__';
+  overlay.style.position = 'absolute';
+  overlay.style.top = `${slotElement.offsetTop}px`;
+  overlay.style.left = `${slotElement.offsetLeft}px`;
+  overlay.style.width = `${rect.width}px`;
+  overlay.style.height = `${rect.height}px`;
+  overlay.style.overflow = 'hidden';
+  overlay.style.zIndex = '999999';
+  overlay.style.pointerEvents = 'auto';
+
+  // We add pointerEvents auto to catch misses
+  slotElement.parentNode.insertBefore(overlay, slotElement);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      initDuckAudio();
+      playGunshot();
+      sendScoreUpdate('miss');
+    }
+  });
+
+  function createDuck() {
+    if (!duckHuntEnabled || !overlay.parentNode) return;
+    const duck = document.createElement('div');
+    duck.style.position = 'absolute';
+    duck.style.width = '40px';
+    duck.style.height = '40px';
+    duck.style.backgroundImage = `url('${DUCK_SVG}')`;
+    duck.style.backgroundSize = 'contain';
+    duck.style.backgroundRepeat = 'no-repeat';
+    duck.style.pointerEvents = 'auto';
+    duck.style.cursor = 'crosshair';
+    
+    // Random start position
+    let x = Math.random() * (rect.width - 40);
+    let y = Math.random() * (rect.height - 40);
+    let vx = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 2);
+    let vy = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 2);
+    
+    duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
+    overlay.appendChild(duck);
+
+    let alive = true;
+    let animFrame = null;
+
+    duck.addEventListener('click', (e) => {
+      if (!alive) return;
+      alive = false;
+      e.preventDefault();
+      e.stopPropagation();
+      initDuckAudio();
+      playGunshot();
+      playQuack();
+      sendScoreUpdate('kill');
+      
+      duck.style.backgroundImage = `url('${DUCK_FLIP_SVG}')`;
+      duck.style.transform = `translate(${x}px, ${y}px) scaleY(-1)`;
+      
+      let fallY = y;
+      function fall() {
+        if (!duck.parentNode) return;
+        fallY += 5;
+        duck.style.transform = `translate(${x}px, ${fallY}px) scaleY(-1)`;
+        if (fallY < rect.height) {
+          requestAnimationFrame(fall);
+        } else {
+          duck.remove();
+          if (duckHuntEnabled) setTimeout(createDuck, 3000 + Math.random() * 4000);
+        }
+      }
+      requestAnimationFrame(fall);
+    });
+
+    let startTime = performance.now();
+    function animate(time) {
+      if (!alive || !duckHuntEnabled || !duck.parentNode) return;
+      x += vx;
+      y += vy;
+      
+      if (x <= 0 || x >= rect.width - 40) { vx *= -1; }
+      if (y <= 0 || y >= rect.height - 40) { vy *= -1; }
+      
+      duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
+      
+      if (time - startTime > 10000) {
+        alive = false;
+        sendScoreUpdate('escape');
+        duck.style.opacity = '0.5';
+        let escapeY = y;
+        function escapeAnim() {
+          if (!duck.parentNode) return;
+          escapeY -= 3;
+          duck.style.transform = `translate(${x}px, ${escapeY}px) scaleX(${vx > 0 ? 1 : -1})`;
+          if (escapeY > -40) {
+            requestAnimationFrame(escapeAnim);
+          } else {
+            duck.remove();
+            if (duckHuntEnabled) setTimeout(createDuck, 3000 + Math.random() * 4000);
+          }
+        }
+        requestAnimationFrame(escapeAnim);
+        return;
+      }
+      animFrame = requestAnimationFrame(animate);
+    }
+    animFrame = requestAnimationFrame(animate);
+  }
+
+  createDuck();
+}
+
+function detectAdSlots() {
+  if (!duckHuntEnabled) return;
+  const elements = document.querySelectorAll('iframe, div[class*="ad-"], div[id*="ad-"], .google_ads, .adsbygoogle, [data-ad-client]');
+  elements.forEach(el => {
+    if (trackedAdSlots.has(el)) return;
+    const rect = el.getBoundingClientRect();
+    // Check if it's an empty ad slot or blocked iframe
+    if (rect.width >= 100 && rect.height >= 50 && (el.tagName === 'IFRAME' || !el.innerText.trim())) {
+      trackedAdSlots.add(el);
+      spawnDuckInSlot(el);
+    }
+  });
+}
+
+function startDuckHunt() {
+  if (duckHuntEnabled) return;
+  duckHuntEnabled = true;
+  document.documentElement.classList.add('duck-hunt-active');
+  if (!document.getElementById('__duckhunt_style__')) {
+    const style = document.createElement('style');
+    style.id = '__duckhunt_style__';
+    style.textContent = `
+      html.duck-hunt-active, html.duck-hunt-active * { cursor: crosshair !important; }
+      .__duckhunt_overlay__ { pointer-events: auto !important; }
+    `;
+    document.head.appendChild(style);
+  }
+  duckSlotDetectorInterval = setInterval(detectAdSlots, 2000);
+  detectAdSlots();
+}
+
+function stopDuckHunt() {
+  duckHuntEnabled = false;
+  document.documentElement.classList.remove('duck-hunt-active');
+  clearInterval(duckSlotDetectorInterval);
+  trackedAdSlots.clear();
+  document.querySelectorAll('.__duckhunt_overlay__').forEach(e => e.remove());
+}
+
+chrome.storage.sync.get(['duckHuntEnabled', 'duckHuntSound'], (res) => {
+  duckHuntSound = res.duckHuntSound !== false;
+  if (res.duckHuntEnabled) startDuckHunt();
+});
+
 
 } // end re-injection guard
