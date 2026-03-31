@@ -24,7 +24,7 @@ let currentHover = null;
 let removeCounter = 0;
 let viewportRafPending = false;
 
-let activeHighlightStyle = 'rainbow';
+let activeHighlightStyle = 'solid-blue';
 
 function injectStyles() {
   if (document.getElementById(STYLE_ID)) return;
@@ -84,171 +84,175 @@ function injectStyles() {
       box-sizing: border-box;
       will-change: background;
     }
-
-    #${OVERLAY_ID}[data-style="rainbow"] {
-      --element-vault-angle: 0deg;
-      padding: 3px;
-      background: conic-gradient(
-        from var(--element-vault-angle),
-        #ff3b30 0deg,
-        #ff9f0a 70deg,
-        #ffd60a 120deg,
-        #32d74b 180deg,
-        #0a84ff 250deg,
-        #5e5ce6 305deg,
-        #bf5af2 332deg,
-        #ff3b30 360deg
-      );
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,0.14),
-        0 0 24px rgba(10,132,255,0.28),
-        0 0 38px rgba(191,90,242,0.22);
-      animation: element-vault-spin 1.4s linear infinite;
-      -webkit-mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-    }
-
+    /* 1. Solid Blue */
     #${OVERLAY_ID}[data-style="solid-blue"] {
       border: 3px solid #0a84ff;
       box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 12px rgba(10,132,255,0.5);
       background: transparent;
     }
 
-    #${OVERLAY_ID}[data-style="dashed-red"] {
-      border: 3px dashed #ff3b30;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 12px rgba(255,59,48,0.3);
-      background: transparent;
-    }
-
+    /* 2. Glowing Green */
     #${OVERLAY_ID}[data-style="glowing-green"] {
       border: 3px solid #32d74b;
       box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 24px #32d74b, inset 0 0 12px rgba(50,215,75,0.2);
-      background: rgba(50, 215, 75, 0.1);
+      background: transparent;
     }
 
-    #${OVERLAY_ID}[data-style="core-spin"] {
-      --element-vault-angle: 0deg;
-      padding: 3px;
-      background: conic-gradient(from var(--element-vault-angle), #c084fc 0%, #3b82f6 50%, #c084fc 100%);
-      animation: element-vault-spin 3s linear infinite;
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      opacity: 0.9;
+    /* 3. Electric Pulse */
+    @keyframes element-vault-electric-pulse-glow {
+      0%, 100% { filter: drop-shadow(0 0 2px rgba(221, 132, 72, 0.4)) drop-shadow(0 0 5px rgba(221, 132, 72, 0.4)); }
+      50% { filter: drop-shadow(0 0 4px rgba(221, 132, 72, 0.6)) drop-shadow(0 0 15px rgba(221, 132, 72, 0.6)); }
+    }
+    #${OVERLAY_ID}[data-style="electric-pulse"] {
+      border: 3px solid #dd8448;
+      background: transparent;
+      box-shadow: 0 0 15px rgba(221, 132, 72, 0.3), inset 0 0 15px rgba(221, 132, 72, 0.3);
+      animation: element-vault-electric-pulse-glow 2s ease-in-out infinite;
     }
 
-    #${OVERLAY_ID}[data-style="stealth-beam"] {
-      --element-vault-angle: 0deg;
-      padding: 2px;
-      background: conic-gradient(from var(--element-vault-angle), transparent 0%, transparent 70%, #38bdf8 100%);
-      animation: element-vault-spin 4s linear infinite;
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    /* 4. Morphing Blob */
+    @keyframes element-vault-morphing-blob-anim {
+      0% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; box-shadow: 5px 5px 20px rgba(33, 212, 253, 0.4); }
+      25% { border-radius: 58% 42% 75% 25% / 76% 46% 54% 24%; }
+      50% { border-radius: 50% 50% 33% 67% / 55% 27% 73% 45%; box-shadow: -5px -2px 20px rgba(183, 33, 255, 0.4); }
+      75% { border-radius: 33% 67% 58% 42% / 63% 68% 32% 37%; }
+      100% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; box-shadow: 5px 5px 20px rgba(33, 212, 253, 0.4); }
     }
-
-    #${OVERLAY_ID}[data-style="fluid-morph"] {
-      padding: 3px;
-      background: linear-gradient(90deg, rgba(20,184,166,0.8), rgba(99,102,241,0.8), rgba(168,85,247,0.8));
-      background-size: 200% 200%;
-      animation: element-vault-bg-move 4s ease infinite;
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
+    #${OVERLAY_ID}[data-style="morphing-blob"] {
+      background: transparent;
+      border: none;
     }
-
-    @keyframes element-vault-shimmer {
-      from { background-position: 200% center; }
-      to { background-position: -200% center; }
-    }
-
-    #${OVERLAY_ID}[data-style="metallic-shimmer"] {
-      padding: 2px;
-      background: linear-gradient(110deg, transparent 45%, rgba(255,255,255,0.8) 50%, transparent 55%);
-      background-size: 200% 100%;
-      animation: element-vault-shimmer 2.5s linear infinite;
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    @keyframes element-vault-breathe-glass {
-      0%, 100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: 0 0 0 rgba(255, 255, 255, 0); }
-      50% { border-color: rgba(255, 255, 255, 0.6); box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
-    }
-
-    #${OVERLAY_ID}[data-style="breathing-glass"] {
-      border: 2px solid rgba(255, 255, 255, 0.1);
-      background: rgba(15, 23, 42, 0.3);
-      backdrop-filter: blur(8px);
-      animation: element-vault-breathe-glass 3s ease-in-out infinite;
-    }
-
-    @keyframes element-vault-pulse-ring {
-      0% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
-      50% { transform: scale(1.02); box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
-      100% { transform: scale(0.98); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
-    }
-
-    #${OVERLAY_ID}[data-style="sonar-pulse"] {
-      border: 3px solid rgba(99, 102, 241, 0.5);
-      animation: element-vault-pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-
-    #${OVERLAY_ID}[data-style="dual-orbit"] {
-      padding: 3px;
-      --element-vault-angle: 0deg;
-      background: conic-gradient(from var(--element-vault-angle), transparent 0%, transparent 40%, #818cf8 50%, transparent 60%),
-                  conic-gradient(from calc(var(--element-vault-angle) + 180deg), transparent 0%, transparent 40%, #34d399 50%, transparent 60%);
-      animation: element-vault-spin 2s linear infinite;
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-    }
-
-    @keyframes element-vault-sweep {
-      0% { background-position: 200% center; }
-      100% { background-position: -200% center; }
-    }
-    
-    #${OVERLAY_ID}[data-style="edge-sweep"] {
-      padding: 2px;
-      background: linear-gradient(90deg, transparent, #22d3ee, transparent);
-      background-size: 200% 100%;
-      animation: element-vault-sweep 2s linear infinite;
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      border: 1px solid rgba(34, 211, 238, 0.3);
-    }
-
-    @keyframes element-vault-aurora {
-      0% { filter: hue-rotate(0deg); }
-      100% { filter: hue-rotate(360deg); }
-    }
-    
-    #${OVERLAY_ID}[data-style="aurora-bleed"] {
-      padding: 2px;
-      background: linear-gradient(to bottom right, rgba(244,63,94,0.8), rgba(168,85,247,0.8), rgba(99,102,241,0.8));
-      animation: element-vault-aurora 4s linear infinite;
-      box-shadow: 0 0 25px rgba(168,85,247,0.6);
-      border: 1px solid rgba(255,255,255,0.3);
-    }
-
-    #${OVERLAY_ID}[data-style="hover-reveal"] {
+    #${OVERLAY_ID}[data-style="morphing-blob"]::before {
+      content: "";
+      position: absolute;
+      inset: -10px;
       padding: 4px;
-      background: conic-gradient(from var(--element-vault-angle), transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%);
-      animation: element-vault-spin 3s linear infinite;
+      background-image: linear-gradient(19deg, #21D4FD 0%, #B721FF 100%);
+      animation: element-vault-morphing-blob-anim 5s infinite;
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor;
       mask-composite: exclude;
-      mix-blend-mode: overlay;
-      box-shadow: 0 0 15px rgba(52,211,153,0.6);
+    }
+
+    /* 5. Offset Multiply */
+    @keyframes element-vault-offset-multiply-border {
+      0%, 100% { clip-path: polygon(0 0, calc(100% - 20px) 20px, 100% 100%, 20px calc(100% - 20px)); }
+      50% { clip-path: polygon(20px 20px, 100% 0, calc(100% - 20px) calc(100% - 20px), 0 100%); }
+    }
+    #${OVERLAY_ID}[data-style="offset-multiply"] {
+      background: transparent;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+    #${OVERLAY_ID}[data-style="offset-multiply"]::before,
+    #${OVERLAY_ID}[data-style="offset-multiply"]::after {
+      content: '';
+      position: absolute;
+      inset: -15px;
+      padding: 3px;
+      mix-blend-mode: screen;
+      animation: element-vault-offset-multiply-border 5s ease-in-out infinite;
+      border-radius: inherit;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+    #${OVERLAY_ID}[data-style="offset-multiply"]::before {
+      background-color: #AA4465;
+      clip-path: polygon(20px 20px, 100% 0, calc(100% - 20px) calc(100% - 20px), 0 100%);
+    }
+    #${OVERLAY_ID}[data-style="offset-multiply"]::after {
+      background-color: #93e1d8;
+      clip-path: polygon(0 0, calc(100% - 20px) 20px, 100% 100%, 20px calc(100% - 20px));
+      animation-delay: -2.5s;
+    }
+
+    /* 6. Rainbow Standard */
+    @keyframes element-vault-rainbow-move {
+      0% { background-position: 0 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0 50%; }
+    }
+    #${OVERLAY_ID}[data-style="rainbow-standard"] {
+      padding: 3px;
+      background: linear-gradient(60deg, hsl(224, 85%, 66%), hsl(269, 85%, 66%), hsl(314, 85%, 66%), hsl(359, 85%, 66%), hsl(44, 85%, 66%), hsl(89, 85%, 66%), hsl(134, 85%, 66%), hsl(179, 85%, 66%));
+      background-size: 300% 300%;
+      animation: element-vault-rainbow-move 4s alternate infinite;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+
+    /* 7. Cyber Neon */
+    @keyframes element-vault-cyber-pulse {
+      0%, 100% { box-shadow: 0 0 10px #f672ca, inset 0 0 5px #f672ca; border-color: rgba(246, 114, 202, 0.8); }
+      50% { box-shadow: 0 0 25px #f672ca, inset 0 0 15px #f672ca; border-color: rgba(246, 114, 202, 1); }
+    }
+    #${OVERLAY_ID}[data-style="cyber-neon"] {
+      border: 2px solid #f672ca;
+      background: transparent;
+      animation: element-vault-cyber-pulse 2s infinite;
+    }
+    #${OVERLAY_ID}[data-style="cyber-neon"]::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      padding: 10px;
+      background: rgba(110, 204, 238, 0.1);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    /* 8. Dot Trace */
+    @keyframes element-vault-trace {
+      0% { offset-distance: 0%; }
+      100% { offset-distance: 100%; }
+    }
+    #${OVERLAY_ID}[data-style="dot-trace"] {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: transparent;
+      border-radius: inherit;
+    }
+    #${OVERLAY_ID}[data-style="dot-trace"]::after {
+      content: '';
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background: #0a84ff;
+      border-radius: 50%;
+      box-shadow: 0 0 15px 5px #0a84ff, 0 0 30px #0a84ff;
+      offset-path: border-box;
+      offset-anchor: 50% 50%;
+      animation: element-vault-trace 3s infinite linear;
+      top: 0;
+      left: 0;
+    }
+
+    /* 9. Spinning Dash */
+    #${OVERLAY_ID}[data-style="spinning-dash"] {
+      padding: 3px;
+      --element-vault-angle: 0deg;
+      animation: element-vault-spin 3s linear infinite;
+      background: conic-gradient(from var(--element-vault-angle), #32d74b 0deg, #32d74b 45deg, transparent 45deg, transparent 180deg, #32d74b 180deg, #32d74b 225deg, transparent 225deg);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      filter: drop-shadow(0 0 5px #32d74b);
+    }
+
+    /* 10. Neon Pulse */
+    @keyframes element-vault-neon-breathe {
+      0%, 100% { box-shadow: 0 0 5px #0ea5e9, inset 0 0 5px #0ea5e9; border-color: rgba(14, 165, 233, 0.4); }
+      50% { box-shadow: 0 0 20px #0ea5e9, inset 0 0 10px #0ea5e9; border-color: rgba(14, 165, 233, 1); }
+    }
+    #${OVERLAY_ID}[data-style="neon-pulse"] {
+      border: 2px solid rgba(14, 165, 233, 0.6);
+      animation: element-vault-neon-breathe 2s ease-in-out infinite;
+      background: transparent;
     }
 
     html.__element-vault-pick-mode__,
@@ -437,7 +441,7 @@ function updateCustomStyleRule() {
 }
 
 // Read initial style
-chrome.storage.sync.get({ activeHighlightStyle: 'core-spin', customStyleConfig: null }, (data) => {
+chrome.storage.sync.get({ activeHighlightStyle: 'solid-blue', customStyleConfig: null }, (data) => {
   activeHighlightStyle = data.activeHighlightStyle;
   customStyleConfig = data.customStyleConfig;
   updateCustomStyleRule();
@@ -884,6 +888,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ ok: true });
         break;
 
+      
+      case 'DUCK_ADS_TOGGLED':
+        if (message.enabled) startDuckAds();
+        else stopDuckAds(message.showGameOver);
+        sendResponse({ ok: true });
+        break;
+
+      case 'DUCK_ADS_SETTINGS_CHANGED':
+        if (message.sound !== undefined) duckAdsSound = message.sound;
+        sendResponse({ ok: true });
+        break;
+
       case 'START_PICK_MODE':
         startPickMode();
         sendResponse({ ok: true });
@@ -927,6 +943,573 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   return true;
+});
+
+
+// --- DUCK ADS! LOGIC ---
+let duckAdsEnabled = false;
+let duckAdsSound = true;
+const trackedAdSlots = new Set();
+let duckAudioCtx = null;
+let duckSlotDetectorInterval = null;
+
+// Sequential ad queue
+let pendingAdQueue = [];
+let activeDuckCount = 0;
+let currentWaveProcessing = false;
+let duckViewportOverlay = null;
+let duckEscapeIndex = 0; // for staggering
+
+const ESCAPE_PHRASES = ["Ha Ha!", "I got away!", "Ads Forever!", "We will rule the World!"];
+
+// Realistic rifle-optic crosshair SVG
+const CROSSHAIR_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="none" stroke="%23FF6B00" stroke-width="1.5" opacity="0.8"/><circle cx="16" cy="16" r="8" fill="none" stroke="%23FF6B00" stroke-width="0.8" opacity="0.5"/><line x1="16" y1="0" x2="16" y2="12" stroke="%23FF6B00" stroke-width="1.2"/><line x1="16" y1="20" x2="16" y2="32" stroke="%23FF6B00" stroke-width="1.2"/><line x1="0" y1="16" x2="12" y2="16" stroke="%23FF6B00" stroke-width="1.2"/><line x1="20" y1="16" x2="32" y2="16" stroke="%23FF6B00" stroke-width="1.2"/><circle cx="16" cy="16" r="1.5" fill="%23FF6B00" opacity="0.6"/><line x1="16" y1="4" x2="16" y2="5.5" stroke="%23FF6B00" stroke-width="0.6"/><line x1="16" y1="26.5" x2="16" y2="28" stroke="%23FF6B00" stroke-width="0.6"/><line x1="4" y1="16" x2="5.5" y2="16" stroke="%23FF6B00" stroke-width="0.6"/><line x1="26.5" y1="16" x2="28" y2="16" stroke="%23FF6B00" stroke-width="0.6"/></svg>`;
+
+function getDuckSvg(color) {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="40" height="40"><path fill="rgba(0,0,0,0.2)" d="M3 2h5v1h-5z"/><path fill="${color}" d="M3 2h5v1h-5zM2 3h7v1h-7zM2 4h3v1h-3zM7 4h2v1h-2zM2 5h7v1h-7zM2 6h7v1h-7zM1 7h2v1h-2zM7 7h5v1h-5zM0 8h12v1h-12zM0 9h12v1h-12zM0 10h12v1h-12zM0 11h12v1h-12zM1 12h10v1h-10zM2 13h7v1h-7z"/><path fill="rgba(0,0,0,0.15)" d="M4 8h5v2h-5z"/><path fill="%23000" d="M5 4h1v1h-1z"/><path fill="%23FFF" d="M6 4h1v1h-1z"/><path fill="%23FF8C00" d="M9 5h4v1h-4zM9 6h4v1h-4z"/></svg>`;
+}
+const DUCK_FLIP_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="40" height="40"><g transform="scale(-1, 1) translate(-16, 0)"><path fill="rgba(0,0,0,0.2)" d="M3 2h5v1h-5z"/><path fill="%23FF0000" d="M3 2h5v1h-5zM2 3h7v1h-7zM2 4h3v1h-3zM7 4h2v1h-2zM2 5h7v1h-7zM2 6h7v1h-7zM1 7h2v1h-2zM7 7h5v1h-5zM0 8h12v1h-12zM0 9h12v1h-12zM0 10h12v1h-12zM0 11h12v1h-12zM1 12h10v1h-10zM2 13h7v1h-7z"/><path fill="rgba(0,0,0,0.15)" d="M4 8h5v2h-5z"/><path fill="%23000" d="M5 4h1v1h-1z"/><path fill="%23FFF" d="M6 4h1v1h-1z"/><path fill="%23FF8C00" d="M9 5h4v1h-4zM9 6h4v1h-4z"/></g></svg>`;
+
+function getDuckType() {
+  const r = Math.random();
+  if (r > 0.90) return { color: '%23FFD700', points: 1000, speedMultiplier: 2.5, type: 'golden' }; 
+  if (r > 0.65) return { color: '%23FF0000', points: 500, speedMultiplier: 1.8, type: 'red' };
+  return { color: '%23FFFFFF', points: 100, speedMultiplier: 1.0, type: 'white' };
+}
+
+function initDuckAudio() {
+  if (!duckAudioCtx) {
+    try { duckAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  }
+  if (duckAudioCtx && duckAudioCtx.state === 'suspended') {
+    duckAudioCtx.resume();
+  }
+}
+
+function playGunshot() {
+  if (!duckAdsSound || !duckAudioCtx) return;
+  const t = duckAudioCtx.currentTime;
+  // Layer 1: Low boom
+  const osc1 = duckAudioCtx.createOscillator();
+  const gain1 = duckAudioCtx.createGain();
+  osc1.type = 'sawtooth';
+  osc1.frequency.setValueAtTime(150, t);
+  osc1.frequency.exponentialRampToValueAtTime(0.01, t + 0.2);
+  gain1.gain.setValueAtTime(1.0, t);
+  gain1.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+  osc1.connect(gain1);
+  gain1.connect(duckAudioCtx.destination);
+  osc1.start(t);
+  osc1.stop(t + 0.2);
+  // Layer 2: High crack
+  const osc2 = duckAudioCtx.createOscillator();
+  const gain2 = duckAudioCtx.createGain();
+  osc2.type = 'square';
+  osc2.frequency.setValueAtTime(800, t);
+  osc2.frequency.exponentialRampToValueAtTime(100, t + 0.08);
+  gain2.gain.setValueAtTime(0.4, t);
+  gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+  osc2.connect(gain2);
+  gain2.connect(duckAudioCtx.destination);
+  osc2.start(t);
+  osc2.stop(t + 0.1);
+  // Layer 3: Noise burst via buffer
+  try {
+    const bufferSize = duckAudioCtx.sampleRate * 0.08;
+    const noiseBuffer = duckAudioCtx.createBuffer(1, bufferSize, duckAudioCtx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    const noise = duckAudioCtx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const noiseGain = duckAudioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.6, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+    noise.connect(noiseGain);
+    noiseGain.connect(duckAudioCtx.destination);
+    noise.start(t);
+    noise.stop(t + 0.08);
+  } catch(e) {}
+}
+
+function playHit() {
+  if (!duckAdsSound || !duckAudioCtx) return;
+  const t = duckAudioCtx.currentTime;
+  const osc = duckAudioCtx.createOscillator();
+  const gain = duckAudioCtx.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(880, t); 
+  osc.frequency.setValueAtTime(1318, t + 0.05);
+  gain.gain.setValueAtTime(0.3, t);
+  gain.gain.linearRampToValueAtTime(0, t + 0.15);
+  osc.connect(gain);
+  gain.connect(duckAudioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.15);
+}
+
+function playStartFanfare() {
+  if (!duckAdsSound || !duckAudioCtx) return;
+  const t = duckAudioCtx.currentTime;
+  const osc = duckAudioCtx.createOscillator();
+  const gain = duckAudioCtx.createGain();
+  osc.type = 'square';
+  const notes = [440, 554, 659, 880];
+  notes.forEach((freq, i) => {
+    osc.frequency.setValueAtTime(freq, t + i * 0.15);
+  });
+  gain.gain.setValueAtTime(0.3, t);
+  gain.gain.setValueAtTime(0.3, t + 0.6);
+  gain.gain.linearRampToValueAtTime(0, t + 0.8);
+  osc.connect(gain);
+  gain.connect(duckAudioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.8);
+}
+
+function sendScoreUpdate(action, points = 0) {
+  chrome.runtime.sendMessage({ type: 'UPDATE_DUCK_SCORE', action, points }).catch(() => {});
+}
+
+// --- Viewport overlay for free-roaming ducks ---
+function ensureDuckViewportOverlay() {
+  if (duckViewportOverlay && duckViewportOverlay.parentNode) return duckViewportOverlay;
+  duckViewportOverlay = document.createElement('div');
+  duckViewportOverlay.id = '__duckads_viewport_overlay__';
+  duckViewportOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;pointer-events:none;overflow:visible;';
+  document.documentElement.appendChild(duckViewportOverlay);
+  duckViewportOverlay.addEventListener('mousedown', (e) => {
+    if (e.target === duckViewportOverlay) {
+      sendScoreUpdate('miss');
+    }
+  });
+  return duckViewportOverlay;
+}
+
+// --- POW starburst effect ---
+function showPowEffect(screenX, screenY) {
+  const vpOverlay = ensureDuckViewportOverlay();
+  const pow = document.createElement('div');
+  pow.className = 'duckads-pow';
+  pow.textContent = 'POW!';
+  pow.style.left = `${screenX - 50}px`;
+  pow.style.top = `${screenY - 50}px`;
+  vpOverlay.appendChild(pow);
+  setTimeout(() => pow.remove(), 500);
+}
+
+// --- Floating score text ---
+function showScoreFloat(screenX, screenY, points) {
+  const vpOverlay = ensureDuckViewportOverlay();
+  const floater = document.createElement('div');
+  floater.className = 'duckads-score-float';
+  floater.textContent = `+${points}`;
+  floater.style.left = `${screenX}px`;
+  floater.style.top = `${screenY - 20}px`;
+  vpOverlay.appendChild(floater);
+  setTimeout(() => floater.remove(), 1200);
+}
+
+// --- Comic speech bubble on escape ---
+function showEscapeBubble(screenX, screenY) {
+  const vpOverlay = ensureDuckViewportOverlay();
+  const bubble = document.createElement('div');
+  bubble.className = 'duckads-speech-bubble';
+  bubble.textContent = ESCAPE_PHRASES[Math.floor(Math.random() * ESCAPE_PHRASES.length)];
+  const bx = Math.min(Math.max(10, screenX - 60), window.innerWidth - 180);
+  const by = Math.min(Math.max(10, screenY - 60), window.innerHeight - 60);
+  bubble.style.left = `${bx}px`;
+  bubble.style.top = `${by}px`;
+  vpOverlay.appendChild(bubble);
+  setTimeout(() => bubble.remove(), 1800);
+}
+
+// --- Duck resolved (hit or escaped) — track wave completion ---
+function onDuckResolved() {
+  activeDuckCount--;
+  if (activeDuckCount <= 0) {
+    activeDuckCount = 0;
+    currentWaveProcessing = false;
+    processNextAd();
+  }
+}
+
+// --- Sequential ad processing ---
+function processNextAd() {
+  if (currentWaveProcessing || !duckAdsEnabled) return;
+  if (pendingAdQueue.length === 0) return;
+  currentWaveProcessing = true;
+  const slotElement = pendingAdQueue.shift();
+  spawnDuckInSlot(slotElement);
+}
+
+function spawnDuckInSlot(slotElement) {
+  const rect = slotElement.getBoundingClientRect();
+  if (rect.width < 100 || rect.height < 50) {
+    currentWaveProcessing = false;
+    processNextAd();
+    return;
+  }
+
+  const vpOverlay = ensureDuckViewportOverlay();
+  slotElement.classList.add('duckads-disintegrate-anim');
+
+  setTimeout(() => {
+    slotElement.style.visibility = 'hidden';
+    const numDucks = Math.floor(Math.random() * 2) + 2;
+    activeDuckCount += numDucks;
+    duckEscapeIndex = 0;
+    const spawnCenterX = rect.left + rect.width / 2;
+    const spawnCenterY = rect.top + rect.height / 2;
+    for (let i = 0; i < numDucks; i++) {
+      createFreeDuck(vpOverlay, spawnCenterX, spawnCenterY, i);
+    }
+  }, 2000);
+}
+
+function createFreeDuck(vpOverlay, spawnX, spawnY, duckIndex) {
+  if (!duckAdsEnabled || !vpOverlay.parentNode) { onDuckResolved(); return; }
+  const duckData = getDuckType();
+  const duck = document.createElement('div');
+  duck.style.position = 'absolute';
+  duck.style.width = '40px';
+  duck.style.height = '40px';
+  duck.style.backgroundImage = `url('${getDuckSvg(duckData.color)}')`;
+  duck.style.backgroundSize = 'contain';
+  duck.style.backgroundRepeat = 'no-repeat';
+  duck.style.pointerEvents = 'auto';
+  duck.style.cursor = `url('${CROSSHAIR_SVG}') 16 16, crosshair`;
+  duck.style.zIndex = '1000000';
+
+  let x = spawnX + (Math.random() - 0.5) * 60 - 20;
+  let y = spawnY + (Math.random() - 0.5) * 40 - 20;
+  let baseSpeed = 1.5 + Math.random() * 2;
+  let vx = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * duckData.speedMultiplier;
+  let vy = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * duckData.speedMultiplier;
+
+  duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
+  vpOverlay.appendChild(duck);
+
+  let alive = true;
+  // Stagger escape time: 15s base + 2.5s per duck index
+  const escapeTime = 15000 + (duckIndex * 2500);
+
+  duck.addEventListener('mousedown', (e) => {
+    if (!alive) return;
+    alive = false;
+    e.preventDefault();
+    e.stopPropagation();
+    initDuckAudio();
+    setTimeout(playHit, 10);
+    sendScoreUpdate('kill', duckData.points);
+
+    showPowEffect(x + 20, y + 20);
+    showScoreFloat(x + 20, y - 10, duckData.points);
+
+    duck.style.backgroundImage = `url('${DUCK_FLIP_SVG}')`;
+    duck.style.transform = `translate(${x}px, ${y}px) scaleY(-1)`;
+
+    let fallY = y;
+    function fall() {
+      if (!duck.parentNode) return;
+      fallY += 5;
+      duck.style.transform = `translate(${x}px, ${fallY}px) scaleY(-1)`;
+      if (fallY < window.innerHeight + 40) {
+        requestAnimationFrame(fall);
+      } else {
+        duck.remove();
+        onDuckResolved();
+      }
+    }
+    requestAnimationFrame(fall);
+  });
+
+  const startTime = performance.now();
+  function animate(time) {
+    if (!alive || !duckAdsEnabled || !duck.parentNode) return;
+    x += vx;
+    y += vy;
+
+    const vw = window.innerWidth - 40;
+    const vh = window.innerHeight - 40;
+    if (x <= 0 || x >= vw) { vx *= -1; x = Math.max(0, Math.min(x, vw)); }
+    if (y <= 0 || y >= vh) { vy *= -1; y = Math.max(0, Math.min(y, vh)); }
+
+    duck.style.transform = `translate(${x}px, ${y}px) scaleX(${vx > 0 ? 1 : -1})`;
+
+    if (time - startTime > escapeTime) {
+      alive = false;
+      sendScoreUpdate('escape');
+
+      showEscapeBubble(x + 20, y);
+
+      setTimeout(() => {
+        let escapeY = y;
+        function escapeAnim() {
+          if (!duck.parentNode) return;
+          escapeY -= 4;
+          duck.style.transform = `translate(${x}px, ${escapeY}px) scaleX(${vx > 0 ? 1 : -1})`;
+          duck.style.opacity = String(Math.max(0, (escapeY + 40) / (y + 40)));
+          if (escapeY > -60) {
+            requestAnimationFrame(escapeAnim);
+          } else {
+            duck.remove();
+            onDuckResolved();
+          }
+        }
+        requestAnimationFrame(escapeAnim);
+      }, 1500);
+      return;
+    }
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+}
+
+function detectAdSlots() {
+  if (!duckAdsEnabled) return;
+  const elements = document.querySelectorAll('iframe, div[class*="ad-"], div[id*="ad-"], .google_ads, .adsbygoogle, [data-ad-client]');
+  elements.forEach(el => {
+    if (trackedAdSlots.has(el)) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width >= 100 && rect.height >= 50 && (el.tagName === 'IFRAME' || !el.innerText.trim() || el.innerHTML.includes('<img'))) {
+      trackedAdSlots.add(el);
+      pendingAdQueue.push(el);
+    }
+  });
+  if (!currentWaveProcessing) processNextAd();
+}
+
+// --- Link navigation blocker ---
+function blockLinkNavigation(e) {
+  const link = e.target.closest('a[href]');
+  if (link) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+}
+
+function globalClickListener(e) {
+  if (duckAdsEnabled) {
+    initDuckAudio();
+    playGunshot();
+  }
+}
+
+// --- Game Over overlay ---
+function showGameOverOverlay(scoreData) {
+  const existing = document.getElementById('__duckads_gameover__');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = '__duckads_gameover__';
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: 2147483647;
+    background: rgba(0,0,0,0.85);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: Impact, 'Arial Black', sans-serif;
+    color: #fff; pointer-events: auto;
+  `;
+
+  const kills = scoreData?.kills || 0;
+  const escapes = scoreData?.escapes || 0;
+  const shots = scoreData?.shots || 0;
+  const points = scoreData?.points || 0;
+  const accuracy = shots > 0 ? Math.round((kills / shots) * 100) : 0;
+  const highScore = scoreData?.highScore || 0;
+  const isNewHigh = points > 0 && points >= highScore;
+
+  overlay.innerHTML = `
+    <div style="text-align: center;">
+      <div style="font-size: 72px; color: #FF6B00; text-shadow: 4px 4px 0 #000; margin-bottom: 10px;">GAME OVER</div>
+      ${isNewHigh ? '<div style="font-size: 28px; color: #FFD700; animation: duckads-flash-text 0.15s infinite; margin-bottom: 16px;">🏆 NEW HIGH SCORE! 🏆</div>' : ''}
+      <div style="font-size: 48px; color: #FFD700; margin-bottom: 24px;">${points.toLocaleString()} PTS</div>
+      <div style="display: flex; gap: 32px; margin-bottom: 24px; font-size: 20px;">
+        <div><span style="color: #44ff44;">${kills}</span> HITS</div>
+        <div><span style="color: #ff4444;">${escapes}</span> ESCAPES</div>
+        <div><span style="color: #44aaff;">${accuracy}%</span> ACCURACY</div>
+      </div>
+      ${highScore > 0 ? `<div style="font-size: 16px; color: #aaa; margin-bottom: 24px;">HIGH SCORE: ${Math.max(highScore, points).toLocaleString()}</div>` : ''}
+      <div style="font-size: 14px; color: #888; margin-top: 20px;">Closing in 5 seconds...</div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(overlay);
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(() => {
+    if (overlay.parentNode) overlay.remove();
+  }, 5000);
+}
+
+function startDuckAds() {
+  if (duckAdsEnabled) return;
+  duckAdsEnabled = true;
+  pendingAdQueue = [];
+  activeDuckCount = 0;
+  currentWaveProcessing = false;
+  duckEscapeIndex = 0;
+  document.documentElement.classList.add('duck-ads-active');
+  document.addEventListener('mousedown', globalClickListener, true);
+  // Block link navigation
+  document.addEventListener('click', blockLinkNavigation, true);
+  document.addEventListener('auxclick', blockLinkNavigation, true);
+
+  if (!document.getElementById('__duckads_style__')) {
+    const style = document.createElement('style');
+    style.id = '__duckads_style__';
+    style.textContent = `
+      html.duck-ads-active, html.duck-ads-active * { cursor: url('${CROSSHAIR_SVG}') 16 16, crosshair !important; }
+      #__duckads_viewport_overlay__ { pointer-events: none !important; }
+      #__duckads_viewport_overlay__ > * { pointer-events: auto; }
+
+      @keyframes duckads-flash-text {
+        0% { color: #ff0000; text-shadow: 4px 4px 0 #000; }
+        25% { color: #00ff00; text-shadow: -4px 4px 0 #000; }
+        50% { color: #0000ff; text-shadow: 4px -4px 0 #000; }
+        75% { color: #ffff00; text-shadow: -4px -4px 0 #000; }
+        100% { color: #ff00ff; text-shadow: 4px 4px 0 #000; }
+      }
+
+      @keyframes duckads-disintegrate {
+        0% { filter: brightness(1) blur(0px); transform: scale(1); opacity: 1; }
+        30% { filter: brightness(1.5) blur(2px); transform: scale(1.04); opacity: 0.9; }
+        60% { filter: brightness(2.2) blur(8px); transform: scale(1.1); opacity: 0.6; }
+        100% { filter: brightness(3) blur(24px); transform: scale(0); opacity: 0; }
+      }
+      .duckads-disintegrate-anim {
+        animation: duckads-disintegrate 2s forwards ease-in !important;
+      }
+
+      .duckads-start-banner {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        font-family: Impact, sans-serif;
+        font-size: 90px; font-weight: bold; text-transform: uppercase; letter-spacing: 5px;
+        z-index: 2147483647; pointer-events: none;
+        animation: duckads-flash-text 0.1s infinite;
+      }
+
+      @keyframes duckads-pow-in {
+        0% { transform: scale(0) rotate(-15deg); opacity: 1; }
+        50% { transform: scale(1.3) rotate(5deg); opacity: 1; }
+        100% { transform: scale(1.5) rotate(0deg); opacity: 0; }
+      }
+      .duckads-pow {
+        position: absolute;
+        width: 100px; height: 100px;
+        display: flex; align-items: center; justify-content: center;
+        font-family: Impact, 'Arial Black', sans-serif;
+        font-size: 32px; font-weight: 900;
+        color: #fff;
+        text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+        background: radial-gradient(circle, #FFD700 0%, #FF4500 50%, #FF0000 100%);
+        clip-path: polygon(50% 0%, 63% 28%, 98% 35%, 72% 58%, 79% 91%, 50% 72%, 21% 91%, 28% 58%, 2% 35%, 37% 28%);
+        pointer-events: none;
+        animation: duckads-pow-in 0.5s forwards ease-out;
+        z-index: 1000001;
+      }
+
+      @keyframes duckads-float-up {
+        0% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(-80px); opacity: 0; }
+      }
+      .duckads-score-float {
+        position: absolute;
+        font-family: Impact, 'Arial Black', sans-serif;
+        font-size: 28px; font-weight: 900;
+        color: #FFD700;
+        -webkit-text-stroke: 2px #000;
+        pointer-events: none;
+        animation: duckads-float-up 1.2s forwards ease-out;
+        z-index: 1000001;
+        white-space: nowrap;
+      }
+
+      @keyframes duckads-bubble-pop {
+        0% { transform: scale(0); opacity: 0; }
+        30% { transform: scale(1.15); opacity: 1; }
+        50% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(0.9); opacity: 0; }
+      }
+      .duckads-speech-bubble {
+        position: absolute;
+        background: #fff; color: #000;
+        font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+        font-size: 16px; font-weight: bold;
+        padding: 10px 16px; border: 3px solid #000; border-radius: 18px;
+        pointer-events: none;
+        animation: duckads-bubble-pop 1.8s forwards ease-out;
+        z-index: 1000002; white-space: nowrap; max-width: 200px;
+        filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.3));
+      }
+      .duckads-speech-bubble::after {
+        content: ''; position: absolute; bottom: -14px; left: 24px;
+        width: 0; height: 0;
+        border-left: 10px solid transparent; border-right: 10px solid transparent;
+        border-top: 14px solid #000;
+      }
+      .duckads-speech-bubble::before {
+        content: ''; position: absolute; bottom: -10px; left: 26px;
+        width: 0; height: 0;
+        border-left: 8px solid transparent; border-right: 8px solid transparent;
+        border-top: 12px solid #fff; z-index: 1;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Play Start Sequence
+  initDuckAudio();
+  playStartFanfare();
+  const banner = document.createElement('div');
+  banner.className = 'duckads-start-banner';
+  banner.textContent = 'DUCK ADS!';
+  document.body.appendChild(banner);
+  setTimeout(() => {
+    banner.remove();
+    duckSlotDetectorInterval = setInterval(detectAdSlots, 2000);
+    detectAdSlots();
+  }, 2000);
+}
+
+function stopDuckAds(showGameOver = false) {
+  if (!duckAdsEnabled && !showGameOver) return;
+  duckAdsEnabled = false;
+  currentWaveProcessing = false;
+  activeDuckCount = 0;
+  pendingAdQueue = [];
+  duckEscapeIndex = 0;
+  document.documentElement.classList.remove('duck-ads-active');
+  document.removeEventListener('mousedown', globalClickListener, true);
+  document.removeEventListener('click', blockLinkNavigation, true);
+  document.removeEventListener('auxclick', blockLinkNavigation, true);
+  clearInterval(duckSlotDetectorInterval);
+  trackedAdSlots.clear();
+  document.querySelectorAll('.__duckads_overlay__').forEach(e => e.remove());
+  if (duckViewportOverlay) { duckViewportOverlay.remove(); duckViewportOverlay = null; }
+  document.querySelectorAll('.duckads-disintegrate-anim').forEach(e => {
+    e.classList.remove('duckads-disintegrate-anim');
+    e.style.visibility = 'visible';
+  });
+
+  if (showGameOver) {
+    // Fetch final score and show game over
+    chrome.runtime.sendMessage({ type: 'GET_DUCK_ADS_FINAL_SCORE' }).then(res => {
+      if (res?.ok) showGameOverOverlay(res.score);
+    }).catch(() => {});
+  }
+}
+
+// Listen for messages from sidepanel
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Handle within the existing listener — but we also add Duck Ads messages
+  // to the existing switch in the main listener above
+});
+
+// Patch into existing message handler (the switch cases are added in the main listener above)
+
+chrome.storage.sync.get(['duckAdsSound'], (res) => {
+  duckAdsSound = res.duckAdsSound !== false;
 });
 
 } // end re-injection guard

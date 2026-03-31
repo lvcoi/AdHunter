@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Element Vault</title>
+    <title>Ad Hunt</title>
     <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
     <div class="app-shell">
       <header class="app-header">
         <div>
-          <p class="eyebrow">Element Vault</p>
+          <p class="eyebrow">Ad Hunt</p>
           <h1>DOM stash</h1>
           <p class="subtle">Pick an element in the page, remove it, then inspect its attributes and CSS here.</p>
         </div>
@@ -34,7 +34,48 @@
         </div>
       </section>
 
-      <section class="adblock-row card">
+      <!-- Duck Ads! Card — above ad blocker -->
+      <section class="duckads-card card" id="duckAdsCard">
+        <div>
+          <div class="section-title">🦆 Duck Ads!</div>
+          <div class="subtle compact">Blast ads and hunt ducks in a retro arcade game.</div>
+        </div>
+        <button id="duckAdsStartBtn" class="duckads-start-btn">Start Duck Ads!</button>
+      </section>
+
+      <!-- Duck Ads Scoreboard — shown when game is active, hides other panels -->
+      <section class="duckads-scoreboard card" id="duckAdsScoreboard" style="display: none;">
+        <div class="duckads-scoreboard-header">
+          <div class="section-title" style="color: #FF6B00; font-size: 16px;">🦆 DUCK ADS!</div>
+        </div>
+        <div class="duckads-score-big" id="duckAdsPoints">0</div>
+        <div class="subtle compact" style="text-align: center; margin-top: -4px; margin-bottom: 12px;">SCORE</div>
+        <div class="duckads-stats-grid">
+          <div class="duckads-stat-box">
+            <div class="duckads-stat-value" id="duckAdsKills" style="color: #44ff44;">0</div>
+            <div class="duckads-stat-label">HITS</div>
+          </div>
+          <div class="duckads-stat-box">
+            <div class="duckads-stat-value" id="duckAdsEscapes" style="color: #ff4444;">0</div>
+            <div class="duckads-stat-label">ESCAPES</div>
+          </div>
+          <div class="duckads-stat-box">
+            <div class="duckads-stat-value" id="duckAdsAccuracy" style="color: #44aaff;">0%</div>
+            <div class="duckads-stat-label">ACCURACY</div>
+          </div>
+        </div>
+        <div class="duckads-high-score" id="duckAdsHighScore" style="display: none;">
+          <span style="color: #FFD700;">🏆</span> HIGH SCORE: <span id="duckAdsHighScoreValue">0</span>
+        </div>
+        <div class="duckads-controls">
+          <label class="duckads-sound-label">
+            <input type="checkbox" id="duckAdsSoundToggle" checked /> Sound
+          </label>
+          <button id="duckAdsQuitBtn" class="danger duckads-quit-btn">Quit</button>
+        </div>
+      </section>
+
+      <section class="adblock-row card" id="adBlockSection">
         <div>
           <div class="section-title">Simple ad blocker</div>
           <div class="subtle compact">Blocks requests to doubleclick.net, googlesyndication.com, and googleadservices.com.</div>
@@ -52,20 +93,16 @@
           <div class="subtle compact">Choose the border style for hovered elements.</div>
         </div>
         <select id="highlightStyleSelect" class="style-select">
-          <option value="core-spin">Core Spin (Default)</option>
-          <option value="stealth-beam">Stealth Beam</option>
-          <option value="fluid-morph">Fluid Morph</option>
-          <option value="metallic-shimmer">Metallic Shimmer</option>
-          <option value="breathing-glass">Breathing Glass</option>
-          <option value="sonar-pulse">Sonar Pulse</option>
-          <option value="dual-orbit">Dual Orbit</option>
-          <option value="edge-sweep">Edge Sweep</option>
-          <option value="aurora-bleed">Aurora Bleed</option>
-          <option value="hover-reveal">Hover Reveal</option>
-          <option value="rainbow">Legacy Rainbow</option>
-          <option value="solid-blue">Solid Blue</option>
-          <option value="dashed-red">Dashed Red</option>
+          <option value="solid-blue">Solid Blue (Default)</option>
           <option value="glowing-green">Glowing Green</option>
+          <option value="electric-pulse">Electric Pulse</option>
+          <option value="morphing-blob">Morphing Blob</option>
+          <option value="offset-multiply">Offset Multiply</option>
+          <option value="rainbow-standard">Rainbow Standard</option>
+          <option value="cyber-neon">Cyber Neon</option>
+          <option value="dot-trace">Dot Trace</option>
+          <option value="spinning-dash">Spinning Dash</option>
+          <option value="neon-pulse">Neon Pulse</option>
           <option value="custom">Custom</option>
         </select>
       </section>
