@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Element Vault",
+  "name": "Ad Hunt",
   "version": "0.3.0",
   "description": "Remove page elements, inspect their attributes and CSS, and manage them from a Chrome side panel.",
   "permissions": [
@@ -14,7 +14,13 @@
     "<all_urls>"
   ],
   "action": {
-    "default_title": "Open Element Vault"
+    "default_title": "Open Ad Hunt",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "background": {
     "service_worker": "background.js"
@@ -33,9 +39,19 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }

@@ -1,14 +1,61 @@
-.claude
-.melliza
+# ── Dependencies ──────────────────────────────
+node_modules/
+
+# ── Build output ─────────────────────────────
+dist/
+
+# ── Dev / build tooling ──────────────────────
+build.js
+package.json
+package-lock.json
+
+# ── Environment & secrets ────────────────────
 .env
-melliza
+.env.*
+
+# ── AI assistant configs ─────────────────────
+.claude/
+.melliza/
+melliza/
 .gemini/
 .gemini-kit/
+GEMINI.md
+
+# ── Scratch / temp files ─────────────────────
 patch_*
 plan*
 rewrite*
 test_*
-GEMINI.md
 generate*
+*.patch
+*.tmp
+
+# ── Source artwork (not shipped, PNGs are) ───
+icons/source/
+icons/*.svg
+
+# ── Documentation (not part of extension) ────
+README.md
+LICENSE
+CHANGELOG.md
+docs/
+
+# ── OS generated files ──────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+*:Zone.Identifier
+
+# ── Editor / IDE ─────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Logs ─────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ── Old/duplicate directories ────────────────
 AdHunter/
-patch.py
