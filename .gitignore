@@ -35,6 +35,10 @@ icons/source/
 icons/*.svg
 
 # ── Documentation (not part of extension zip) ─
+# ── Documentation (not part of extension) ────
+README.md
+LICENSE
+CHANGELOG.md
 docs/
 
 # ── OS generated files ──────────────────────
