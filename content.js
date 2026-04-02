@@ -979,7 +979,7 @@ function getDuckType() {
 
 function initDuckAudio() {
   if (!duckAudioCtx) {
-    try { duckAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+    try { duckAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ console.warn('Ad Hunt: Audio not available, sound effects disabled.'); duckAdsSound = false; }
   }
   if (duckAudioCtx && duckAudioCtx.state === 'suspended') {
     duckAudioCtx.resume();
@@ -1267,7 +1267,7 @@ function createFreeDuck(vpOverlay, spawnX, spawnY, duckIndex) {
 
 function detectAdSlots() {
   if (!duckAdsEnabled) return;
-  const elements = document.querySelectorAll('iframe, div[class*="ad-"], div[id*="ad-"], .google_ads, .adsbygoogle, [data-ad-client]');
+  const elements = document.querySelectorAll('iframe[src*="ad"], iframe[src*="doubleclick"], iframe[src*="googlesyndication"], div[class*="ad-"], div[class*="ad_"], div[class*="ads-"], div[class*="ads_"], div[id*="ad-"], div[id*="ad_"], div[id*="ads-"], div[id*="ads_"], .google_ads, .adsbygoogle, [data-ad-client], [data-ad-slot], [data-ad], ins.adsbygoogle, [id*="google_ads"], [class*="sponsored"], [data-testid*="ad"]');
   elements.forEach(el => {
     if (trackedAdSlots.has(el)) return;
     const rect = el.getBoundingClientRect();

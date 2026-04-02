@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Ad Hunt",
-  "version": "0.3.0",
-  "description": "Remove page elements, inspect their attributes and CSS, and manage them from a Chrome side panel.",
+  "version": "1.0.0",
+  "description": "Hunt ads like a retro arcade game! Ad Hunt replaces detected ads with roaming pixel-art ducks you shoot for points, plus a DOM sniper tool to inspect and remove any page element.",
   "permissions": [
     "storage",
     "sidePanel",
