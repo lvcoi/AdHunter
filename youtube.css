@@ -1,0 +1,5 @@
+/* Only explicitly identified ad containers. Keep the player and its controls
+   intact, including when YouTube nests or changes surrounding containers. */
+html[data-adhunter-youtube-enabled="true"] :is(ytd-ad-slot-renderer, ytd-in-feed-ad-layout-renderer, ytd-ads-engagement-panel-content-renderer):not(#movie_player, #movie_player *, .html5-video-player, .html5-video-player *):not(:has(#movie_player, .html5-video-player)) {
+  display: none !important;
+}

@@ -935,7 +935,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       default:
-        sendResponse({ ok: false, error: 'Unknown message type.' });
+        // Other content scripts own their message types. A reply here would
+        // race their response (for example GET_YOUTUBE_AD_STATE).
+        return false;
     }
   } catch (error) {
     console.error(error);
@@ -1142,7 +1144,18 @@ function processNextAd() {
   spawnDuckInSlot(slotElement);
 }
 
+function isYouTubePlayerElement(element) {
+  if (!/(^|\.)youtube\.com$/i.test(location.hostname)) return false;
+  const playerSelector = '#movie_player, .html5-video-player';
+  return Boolean(element.closest(playerSelector) || element.querySelector(playerSelector));
+}
+
 function spawnDuckInSlot(slotElement) {
+  if (!duckAdsEnabled || !slotElement.isConnected || isYouTubePlayerElement(slotElement)) {
+    currentWaveProcessing = false;
+    processNextAd();
+    return;
+  }
   const rect = slotElement.getBoundingClientRect();
   if (rect.width < 100 || rect.height < 50) {
     currentWaveProcessing = false;
@@ -1154,6 +1167,13 @@ function spawnDuckInSlot(slotElement) {
   slotElement.classList.add('duckads-disintegrate-anim');
 
   setTimeout(() => {
+    // A SPA can replace/reparent the player while the animation is running.
+    if (!duckAdsEnabled || !slotElement.isConnected || isYouTubePlayerElement(slotElement)) {
+      slotElement.classList.remove('duckads-disintegrate-anim');
+      currentWaveProcessing = false;
+      processNextAd();
+      return;
+    }
     slotElement.style.visibility = 'hidden';
     const numDucks = Math.floor(Math.random() * 2) + 2;
     activeDuckCount += numDucks;
@@ -1269,7 +1289,7 @@ function detectAdSlots() {
   if (!duckAdsEnabled) return;
   const elements = document.querySelectorAll('iframe[src*="ad"], iframe[src*="doubleclick"], iframe[src*="googlesyndication"], div[class*="ad-"], div[class*="ad_"], div[class*="ads-"], div[class*="ads_"], div[id*="ad-"], div[id*="ad_"], div[id*="ads-"], div[id*="ads_"], .google_ads, .adsbygoogle, [data-ad-client], [data-ad-slot], [data-ad], ins.adsbygoogle, [id*="google_ads"], [class*="sponsored"], [data-testid*="ad"]');
   elements.forEach(el => {
-    if (trackedAdSlots.has(el)) return;
+    if (trackedAdSlots.has(el) || isYouTubePlayerElement(el)) return;
     const rect = el.getBoundingClientRect();
     if (rect.width >= 100 && rect.height >= 50 && (el.tagName === 'IFRAME' || !el.innerText.trim() || el.innerHTML.includes('<img'))) {
       trackedAdSlots.add(el);
@@ -1513,3 +1533,4 @@ chrome.storage.sync.get(['duckAdsSound'], (res) => {
 });
 
 } // end re-injection guard
+

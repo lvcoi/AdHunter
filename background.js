@@ -1,4 +1,5 @@
 const AD_RULESET_ID = 'adblock_rules';
+let adBlockerUpdateQueue = Promise.resolve();
 
 chrome.runtime.onInstalled.addListener(async () => {
   try {
@@ -13,12 +14,34 @@ async function getAdBlockerEnabled() {
   return enabledRulesets.includes(AD_RULESET_ID);
 }
 
-async function setAdBlockerEnabled(enabled) {
+function setAdBlockerEnabled(enabled) {
+  // Different windows can toggle concurrently. Serialize the rule update and
+  // notification together so an older broadcast cannot overwrite newer state.
+  const operation = adBlockerUpdateQueue.then(() => applyAdBlockerEnabled(enabled));
+  adBlockerUpdateQueue = operation.catch(() => {});
+  return operation;
+}
+
+async function applyAdBlockerEnabled(enabled) {
   const options = enabled
     ? { enableRulesetIds: [AD_RULESET_ID] }
     : { disableRulesetIds: [AD_RULESET_ID] };
 
   await chrome.declarativeNetRequest.updateEnabledRulesets(options);
+  // Keep existing YouTube pages in sync with the same switch as network rules.
+  // Tabs without the new content script (or closed during the query) are normal.
+  try {
+    const tabs = await chrome.tabs.query({
+      url: ['https://www.youtube.com/*', 'https://youtube.com/*']
+    });
+    await Promise.allSettled(tabs.filter(tab => typeof tab.id === 'number').map(tab =>
+      chrome.tabs.sendMessage(tab.id, { type: 'AD_BLOCKER_STATE_CHANGED', enabled })
+    ));
+  } catch (error) {
+    // The ruleset change succeeded. Do not report a failed toggle merely
+    // because no tab could be notified; new documents query the actual state.
+    console.warn('Could not notify YouTube tabs of blocker state:', error);
+  }
   return enabled;
 }
 
